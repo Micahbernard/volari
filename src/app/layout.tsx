@@ -75,7 +75,7 @@ export default function RootLayout({
           <CustomCursor />
 
           {/* Page content — z-0 naturally stacks above the -z-10 canvas */}
-          <main className="relative">
+          <main className="relative z-10">
             <PageTransitionProvider>{children}</PageTransitionProvider>
           </main>
         </SmoothScrollProvider>

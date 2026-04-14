@@ -145,10 +145,14 @@ function ViewportSync({
 export default function WebGLBackground() {
   return (
     <div
-      className="pointer-events-none fixed inset-0 -z-10"
+      className="pointer-events-none fixed inset-0 -z-1"
       aria-hidden="true"
     >
       <Canvas
+        onCreated={({ gl }) => {
+          gl.debug.checkShaderErrors = true;
+          console.log("WebGL renderer created:", gl.getContext());
+        }}
         camera={{
           position: [0, 0, 1],
           near: 0.1,
@@ -166,7 +170,7 @@ export default function WebGLBackground() {
         }}
         frameloop="always"
         flat
-        style={{ background: "#000000" }}
+        style={{ background: "#050505" }}
       >
         <FluidPlane />
       </Canvas>

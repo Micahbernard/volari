@@ -100,7 +100,7 @@ html.lenis body {
 }
 
 body {
-  background: var(--v-black);
+  background: transparent; /* NOT var(--v-black) — lets WebGL show through */
   color: var(--v-chalk);
   font-family: var(--font-sans), system-ui, -apple-system, sans-serif;
   overflow-x: hidden;
