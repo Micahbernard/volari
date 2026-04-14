@@ -1,26 +1,199 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* ─────────────────────────────────────────────
+   VOLARI — "Modern Mystic" Design System
+   Dark Alternative & Esoteric Palette
+   ───────────────────────────────────────────── */
+
+@font-face {
+  font-family: "Volari Serif";
+  src: local("Playfair Display");
+  font-display: swap;
 }
 
+/* ── Theme Tokens ── */
+:root {
+  --v-black: #050505;
+  --v-void: #0a0a0a;
+  --v-charcoal: #111111;
+  --v-ash: #1a1a1a;
+  --v-smoke: #2a2a2a;
+  --v-silver: #8a8a8a;
+  --v-bone: #c5c5c5;
+  --v-chalk: #e8e8e8;
+  --v-white: #f0f0f0;
+  --v-accent: #d4a853;
+  --v-accent-dim: #a07d3a;
+
+  /* Functional */
+  --background: var(--v-black);
+  --foreground: var(--v-chalk);
+  --muted: var(--v-silver);
+
+  /* Easing curves */
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+  --ease-in-out-circ: cubic-bezier(0.85, 0, 0.15, 1);
+
+  /* Layout */
+  --header-height: 4.5rem;
+}
+
+/* ── Tailwind v4 Theme Extension ── */
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-v-black: var(--v-black);
+  --color-v-void: var(--v-void);
+  --color-v-charcoal: var(--v-charcoal);
+  --color-v-ash: var(--v-ash);
+  --color-v-smoke: var(--v-smoke);
+  --color-v-silver: var(--v-silver);
+  --color-v-bone: var(--v-bone);
+  --color-v-chalk: var(--v-chalk);
+  --color-v-white: var(--v-white);
+  --color-v-accent: var(--v-accent);
+  --color-v-accent-dim: var(--v-accent-dim);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-serif: var(--font-playfair);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* ── Base Reset ── */
+*,
+*::before,
+*::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+::selection {
+  background: var(--v-accent);
+  color: var(--v-black);
+}
+
+html {
+  background: var(--v-black);
+  color: var(--v-chalk);
+  scroll-behavior: auto; /* Lenis handles smooth scroll */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+
+.lenis.lenis-smooth [data-lenis-prevent] {
+  overscroll-behavior: contain;
+}
+
+.lenis.lenis-stopped {
+  overflow: hidden;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--v-black);
+  color: var(--v-chalk);
+  font-family: var(--font-sans), system-ui, -apple-system, sans-serif;
+  overflow-x: hidden;
+  position: relative;
+}
+
+/* ── Film Grain / Noise Overlay ──
+   Full-viewport pseudo-element with SVG noise filter.
+   GPU-composited on its own layer via will-change.
+   pointer-events: none so it never blocks interaction. */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  opacity: 0.035;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 256px 256px;
+  will-change: transform;
+  mix-blend-mode: overlay;
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--v-black);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--v-smoke);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--v-silver);
+}
+
+/* ── Utility Classes ── */
+.text-balance {
+  text-wrap: balance;
+}
+
+.clip-inset-full {
+  clip-path: inset(0 100% 0 0);
+}
+
+.clip-inset-none {
+  clip-path: inset(0 0% 0 0);
+}
+
+/* Mask reveal utility for GSAP animations */
+.mask-reveal {
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
+}
+
+.mask-hidden {
+  clip-path: polygon(0 0, 0 0, 0 100%, 0 100%);
+}
+
+/* Horizontal rule styling */
+.v-rule {
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--v-smoke) 20%,
+    var(--v-smoke) 80%,
+    transparent
+  );
+}
+
+/* ── Navbar scroll state ── */
+.nav-scrolled {
+  background-color: rgba(5, 5, 5, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* ── Hide native cursor on desktop when custom cursor is active ── */
+@media (pointer: fine) {
+  * {
+    cursor: none !important;
+  }
+}
+
+/* ── Responsive Type Scale ── */
+@media (max-width: 768px) {
+  :root {
+    --header-height: 3.5rem;
+  }
 }
