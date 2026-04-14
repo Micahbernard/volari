@@ -4,6 +4,8 @@ import { useEffect, useRef, useMemo } from "react";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import ServicesShowcase from "@/components/ServicesShowcase";
+import WorkShowcase from "@/components/WorkShowcase";
+import PageTransition from "@/components/PageTransition";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -297,7 +299,7 @@ export default function Home() {
   };
 
   return (
-    <>
+    <PageTransition>
       {/* ═══════════════════════════════════════════════════════
           CURTAIN OVERLAY — Solid black, lifts to reveal hero
           ═══════════════════════════════════════════════════════ */}
@@ -450,6 +452,11 @@ export default function Home() {
       <ServicesShowcase />
 
       {/* ═══════════════════════════════════════════════════════
+          WORK — Horizontal portfolio with SVG distortion hover
+          ═══════════════════════════════════════════════════════ */}
+      <WorkShowcase />
+
+      {/* ═══════════════════════════════════════════════════════
           CONTENT SECTIONS
           ═══════════════════════════════════════════════════════ */}
       <section ref={setSectionRef(0)} className="relative px-6 py-40">
@@ -537,6 +544,6 @@ export default function Home() {
       </section>
 
       <div className="h-[30vh]" />
-    </>
+    </PageTransition>
   );
 }
