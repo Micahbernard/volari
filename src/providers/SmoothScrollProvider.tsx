@@ -1,6 +1,13 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import Lenis from "lenis";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
@@ -8,32 +15,40 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 // Register GSAP plugins once at module scope
 gsap.registerPlugin(ScrollTrigger);
 
+const LenisContext = createContext<Lenis | null>(null);
+
+export function useLenis() {
+  return useContext(LenisContext);
+}
+
 export default function SmoothScrollProvider({
   children,
 }: {
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
   const lenisRef = useRef<Lenis | null>(null);
+  const [lenis, setLenis] = useState<Lenis | null>(null);
 
   useEffect(() => {
     // Initialize Lenis
-    const lenis = new Lenis({
+    const instance = new Lenis({
       lerp: 0.08,
       smoothWheel: true,
       wheelMultiplier: 1,
     });
 
-    lenisRef.current = lenis;
+    lenisRef.current = instance;
+    queueMicrotask(() => setLenis(instance));
 
     // Bridge Lenis → GSAP ScrollTrigger
     // This is critical: every Lenis scroll event triggers a ScrollTrigger update
     // so GSAP-driven scroll animations stay perfectly in sync.
-    lenis.on("scroll", ScrollTrigger.update);
+    instance.on("scroll", ScrollTrigger.update);
 
     // Use GSAP's ticker as the single animation loop.
     // This avoids a separate rAF loop — everything runs on one heartbeat.
     const tickerCallback = (time: number) => {
-      lenis.raf(time * 1000); // GSAP ticker time is in seconds, Lenis expects ms
+      instance.raf(time * 1000); // GSAP ticker time is in seconds, Lenis expects ms
     };
 
     gsap.ticker.add(tickerCallback);
@@ -43,10 +58,13 @@ export default function SmoothScrollProvider({
 
     return () => {
       gsap.ticker.remove(tickerCallback);
-      lenis.destroy();
+      instance.destroy();
       lenisRef.current = null;
+      queueMicrotask(() => setLenis(null));
     };
   }, []);
 
-  return <>{children}</>;
+  return (
+    <LenisContext.Provider value={lenis}>{children}</LenisContext.Provider>
+  );
 }

@@ -400,7 +400,7 @@ export default function WorkShowcase() {
               key={project.id}
               ref={setCardRef(i)}
               data-cursor-label="View"
-              className="relative flex h-[70vh] w-[clamp(320px,60vw,680px)] shrink-0 flex-col overflow-hidden rounded-sm opacity-0 max-md:w-[90vw] max-md:snap-center"
+              className="relative flex h-[70vh] w-[clamp(320px,60vw,680px)] shrink-0 flex-col overflow-hidden rounded-sm opacity-0 ring-1 ring-transparent transition-[box-shadow,ring-color] duration-500 max-md:w-[90vw] max-md:snap-center hover:shadow-[0_0_48px_-14px_rgba(255,255,255,0.06)] hover:ring-v-smoke/25"
             >
               {/* ════════════════════════════════════════
                   VISUAL AREA — top 65%

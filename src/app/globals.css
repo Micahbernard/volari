@@ -36,7 +36,7 @@
   --ease-in-out-circ: cubic-bezier(0.85, 0, 0.15, 1);
 
   /* Layout */
-  --header-height: 4.5rem;
+  --header-height: 5.5rem;
 }
 
 /* ── Tailwind v4 Theme Extension ── */
@@ -177,6 +177,19 @@ body::after {
   );
 }
 
+/* Navbar horizontal inset — vw tracks viewport so logo matches ~red-circle position */
+.nav-viewport-inset {
+  padding-left: max(1.75rem, 7vw);
+  padding-right: max(1.5rem, 5vw);
+}
+
+@media (min-width: 1280px) {
+  .nav-viewport-inset {
+    padding-left: max(2.5rem, 8vw);
+    padding-right: max(2rem, 6vw);
+  }
+}
+
 /* ── Navbar scroll state ── */
 .nav-scrolled {
   background-color: rgba(5, 5, 5, 0.7);
@@ -194,6 +207,117 @@ body::after {
 /* ── Responsive Type Scale ── */
 @media (max-width: 768px) {
   :root {
-    --header-height: 3.5rem;
+    --header-height: 4.25rem;
   }
+}
+
+/* ── Hero "VOLARI" — glitter + bokeh + specular (inspired by macro silver, tuned to Volari dark UI) ── */
+/* SVG: fine fractal noise → sparkle grain on letters */
+.hero-volari-heading {
+  /* Neutral void halo — emphasis stays on clipped letter treatment, not colored bloom */
+  filter: drop-shadow(0 0 22px rgba(0, 0, 0, 0.55))
+    drop-shadow(0 0 52px rgba(0, 0, 0, 0.3));
+}
+
+.hero-volari-letter {
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  /* Stack (top → bottom): micro-grain | bokeh A | bokeh B | specular blade | steel body */
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='72' height='72'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.92' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)' opacity='0.42'/%3E%3C/svg%3E"),
+    radial-gradient(
+      ellipse 100% 70% at 50% 48%,
+      rgba(255, 255, 255, 0.26) 0%,
+      rgba(185, 200, 215, 0.1) 30%,
+      transparent 58%
+    ),
+    radial-gradient(
+      ellipse 85% 60% at 50% 52%,
+      rgba(220, 232, 242, 0.16) 0%,
+      rgba(100, 118, 138, 0.05) 40%,
+      transparent 62%
+    ),
+    linear-gradient(
+      102deg,
+      transparent 0%,
+      transparent 36%,
+      rgba(255, 255, 255, 0.35) 43%,
+      rgba(255, 255, 255, 1) 49%,
+      rgba(248, 252, 255, 0.95) 51%,
+      rgba(190, 205, 218, 0.45) 58%,
+      transparent 64%,
+      transparent 100%
+    ),
+    linear-gradient(
+      93deg,
+      #060708 0%,
+      #12161d 9%,
+      #283038 22%,
+      #4f5c6a 36%,
+      #8b9bab 44%,
+      #cfd8e2 51%,
+      #8e9dad 58%,
+      #3d4752 74%,
+      #0c0e12 100%
+    );
+  background-size:
+    72px 72px,
+    240% 240%,
+    220% 220%,
+    340% 100%,
+    280% 100%;
+  background-position:
+    0 0,
+    35% 42%,
+    68% 58%,
+    125% 50%,
+    15% 50%;
+  background-repeat: repeat, no-repeat, no-repeat, no-repeat, no-repeat;
+  /* Grain sparkles on metal; soft orbs add depth without blowing contrast */
+  background-blend-mode: overlay, lighten, lighten, normal, normal;
+  background-clip: text;
+  -webkit-background-clip: text;
+  animation: hero-volari-glitter-metal 5.5s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-volari-letter {
+    animation: none;
+    background-position:
+      36px 24px,
+      48% 45%,
+      52% 55%,
+      55% 50%,
+      42% 50%;
+  }
+
+  .hero-volari-heading {
+    filter: none;
+  }
+}
+
+@keyframes hero-volari-glitter-metal {
+  0% {
+    background-position:
+      0 0,
+      28% 38%,
+      72% 62%,
+      140% 50%,
+      0% 50%;
+  }
+  100% {
+    background-position:
+      72px 56px,
+      62% 52%,
+      38% 48%,
+      -45% 50%,
+      100% 50%;
+  }
+}
+
+/* Cursor ring state — applied via JS on hover */
+/* Element is 2x size scaled to 0.5 — border needs 2x to appear as ~1.5px */
+.cursor-ring {
+  background-color: transparent !important;
+  border: 3px solid white;
 }

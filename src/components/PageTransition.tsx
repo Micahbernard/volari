@@ -2,15 +2,11 @@
 
 import { motion } from "framer-motion";
 
-// ─────────────────────────────────────────────────────────────
-// PageTransition — Framer Motion enter/exit for page content.
-//
-// Used for simple presence animations only. All scroll-driven
-// and timeline animations remain GSAP (per architectural mandate).
-//
-// Enter: opacity 0→1, y 16→0, 0.6s, expo-out [0.16, 1, 0.3, 1]
-// Exit:  opacity 1→0, 0.3s, expo-in [0.7, 0, 0.84, 0]
-// ─────────────────────────────────────────────────────────────
+// See .cursor/rules/volari-engineering-constraints.mdc — no spring physics;
+// cinematic eases; entrance via mask, not simultaneous generic slide+fade.
+
+const EASE_CINEMATIC: [number, number, number, number] = [0.22, 1, 0.36, 1];
+
 export default function PageTransition({
   children,
 }: {
@@ -19,20 +15,19 @@ export default function PageTransition({
   return (
     <motion.div
       className="relative"
-      initial={{ opacity: 0, y: 16 }}
+      initial={{ clipPath: "inset(0 0 100% 0)" }}
       animate={{
-        opacity: 1,
-        y: 0,
+        clipPath: "inset(0 0 0% 0)",
         transition: {
-          duration: 0.6,
-          ease: [0.16, 1, 0.3, 1], // expo out
+          duration: 1.15,
+          ease: EASE_CINEMATIC,
         },
       }}
       exit={{
-        opacity: 0,
+        clipPath: "inset(0 0 100% 0)",
         transition: {
-          duration: 0.3,
-          ease: [0.7, 0, 0.84, 0], // expo in
+          duration: 0.85,
+          ease: [0.7, 0, 0.84, 0],
         },
       }}
     >

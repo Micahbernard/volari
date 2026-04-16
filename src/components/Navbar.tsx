@@ -1,47 +1,70 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import Link from "next/link";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { useLenis } from "@/providers/SmoothScrollProvider";
+import { useWaterRipple } from "@/providers/WaterRippleProvider";
+import NavMenuOverlay from "@/components/NavMenuOverlay";
 
 gsap.registerPlugin(ScrollTrigger);
 
 // ─────────────────────────────────────────────────────────────
-// Navbar
-//
-// Fixed header. Transparent over hero, glass-blur on scroll.
-// Hides on scroll-down, reveals on scroll-up.
-// All driven by ScrollTrigger → GSAP. Zero React state.
-//
-// Nav links have data-cursor-magnetic + data-cursor-label
-// so the custom cursor pulls toward them and shows labels.
+// Navbar — Logo + orbit menu trigger (dot + ring).
+// Click: full-screen NavMenuOverlay (z-55). Lenis paused while open.
 // ─────────────────────────────────────────────────────────────
 
-const NAV_LINKS = [
-  { label: "Work", href: "#work", cursorLabel: "View" },
-  { label: "About", href: "#about", cursorLabel: "Read" },
-  { label: "Services", href: "#services", cursorLabel: "Explore" },
-  { label: "Contact", href: "#contact", cursorLabel: "Connect" },
-];
-
 export default function Navbar() {
+  const lenis = useLenis();
+  const waterRipple = useWaterRipple();
+  const [menuOpen, setMenuOpen] = useState(false);
+
   const navRef = useRef<HTMLElement>(null);
   const logoRef = useRef<HTMLAnchorElement>(null);
-  const linksRef = useRef<(HTMLAnchorElement | null)[]>([]);
+  const menuTriggerRef = useRef<HTMLButtonElement>(null);
   const ruleRef = useRef<HTMLDivElement>(null);
+  const menuOpenRef = useRef(menuOpen);
+
+  useEffect(() => {
+    menuOpenRef.current = menuOpen;
+  }, [menuOpen]);
+
+  useEffect(() => {
+    if (!lenis) return;
+    if (menuOpen) lenis.stop();
+    else lenis.start();
+  }, [lenis, menuOpen]);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const btn = menuTriggerRef.current;
+    if (!btn) return;
+    const r = btn.getBoundingClientRect();
+    const cx = r.left + r.width / 2;
+    const cy = r.top + r.height / 2;
+    const id = requestAnimationFrame(() => {
+      waterRipple.dropAtClientPoint(cx, cy, 28, 0.12);
+    });
+    return () => cancelAnimationFrame(id);
+  }, [menuOpen, waterRipple]);
+
+  const dotRef = useRef<HTMLSpanElement>(null);
+
+  const openMenu = useCallback(() => {
+    setMenuOpen(true);
+  }, []);
 
   useEffect(() => {
     const nav = navRef.current;
     if (!nav) return;
 
     const ctx = gsap.context(() => {
-      // ── Entrance animation ──
       const entranceTl = gsap.timeline({
         defaults: { ease: "power4.out" },
-        delay: 2.0, // After hero characters land (~0.7 + 6×0.07 + 1.6)
+        delay: 2.0,
       });
 
-      // Logo mask reveal
       if (logoRef.current) {
         entranceTl.fromTo(
           logoRef.current,
@@ -51,24 +74,15 @@ export default function Navbar() {
         );
       }
 
-      // Stagger nav links from right
-      const validLinks = linksRef.current.filter(Boolean);
-      if (validLinks.length) {
+      if (menuTriggerRef.current) {
         entranceTl.fromTo(
-          validLinks,
-          { y: -20, opacity: 0 },
-          {
-            y: 0,
-            opacity: 1,
-            duration: 0.8,
-            stagger: 0.08,
-            ease: "power3.out",
-          },
+          menuTriggerRef.current,
+          { y: -18, opacity: 0 },
+          { y: 0, opacity: 1, duration: 0.85, ease: "power3.out" },
           0.2
         );
       }
 
-      // Bottom rule wipe
       if (ruleRef.current) {
         entranceTl.fromTo(
           ruleRef.current,
@@ -78,29 +92,25 @@ export default function Navbar() {
         );
       }
 
-      // ── Scroll behavior: hide on down, show on up ──
-      // Uses ScrollTrigger's onUpdate for direction detection.
-      // Mutates transform directly — no React state involved.
       let lastDirection = -1;
 
       ScrollTrigger.create({
         start: "top -80",
         end: "max",
         onUpdate: (self) => {
-          const direction = self.direction; // 1 = down, -1 = up
+          const direction = self.direction;
+          if (menuOpenRef.current) return;
 
           if (direction !== lastDirection) {
             lastDirection = direction;
 
             if (direction === 1) {
-              // Scrolling down — hide nav
               gsap.to(nav, {
                 y: "-100%",
                 duration: 0.5,
                 ease: "power3.inOut",
               });
             } else {
-              // Scrolling up — show nav with backdrop
               gsap.to(nav, {
                 y: "0%",
                 duration: 0.4,
@@ -111,7 +121,6 @@ export default function Navbar() {
         },
       });
 
-      // ── Backdrop blur activation after scrolling past hero ──
       ScrollTrigger.create({
         start: "top -100",
         onEnter: () => nav.classList.add("nav-scrolled"),
@@ -122,71 +131,67 @@ export default function Navbar() {
     return () => ctx.revert();
   }, []);
 
-  const setLinkRef = (i: number) => (el: HTMLAnchorElement | null) => {
-    linksRef.current[i] = el;
-  };
-
   return (
-    <nav
-      ref={navRef}
-      className="fixed top-0 left-0 right-0 z-50 transition-[backdrop-filter,background-color] duration-500"
-      style={{ willChange: "transform" }}
-    >
-      <div className="mx-auto flex h-[var(--header-height)] max-w-[90rem] items-center justify-between px-6 md:px-10">
-        {/* ── Logo ── */}
-        <a
-          ref={logoRef}
-          href="/"
-          data-cursor-magnetic
-          data-cursor-label="Home"
-          className="relative block opacity-0"
-        >
-          <span className="font-[family-name:var(--font-playfair)] text-xl tracking-[-0.02em] text-v-chalk">
-            Volari
-          </span>
-          <span className="absolute -bottom-1 left-0 font-[family-name:var(--font-geist-mono)] text-[7px] uppercase tracking-[0.5em] text-v-silver">
-            Studio
-          </span>
-        </a>
-
-        {/* ── Nav links ── */}
-        <div className="flex items-center gap-10">
-          {NAV_LINKS.map((link, i) => (
-            <a
-              key={link.label}
-              ref={setLinkRef(i)}
-              href={link.href}
-              data-cursor-magnetic
-              data-cursor-label={link.cursorLabel}
-              className="group relative block py-2 font-[family-name:var(--font-geist-mono)] text-[11px] uppercase tracking-[0.25em] text-v-silver opacity-0 transition-colors duration-300 hover:text-v-chalk"
-            >
-              {link.label}
-              {/* Underline reveal on hover */}
-              <span className="absolute bottom-0 left-0 h-px w-0 bg-v-accent transition-all duration-500 ease-[var(--ease-out-expo)] group-hover:w-full" />
-            </a>
-          ))}
-
-          {/* ── CTA dot separator + inquiry link ── */}
-          <span className="h-1 w-1 rounded-full bg-v-smoke" aria-hidden="true" />
-          <a
-            ref={setLinkRef(NAV_LINKS.length)}
-            href="#contact"
+    <>
+      <nav
+        ref={navRef}
+        className="nav-viewport-inset fixed top-0 right-0 left-0 z-50 box-border transition-[backdrop-filter,background-color] duration-500"
+        style={{ willChange: "transform" }}
+      >
+        <div className="mx-auto flex h-[var(--header-height)] w-full max-w-[90rem] items-center justify-between">
+          <Link
+            ref={logoRef}
+            href="/"
             data-cursor-magnetic
-            data-cursor-label="Let's Talk"
-            className="relative block overflow-hidden py-2 font-[family-name:var(--font-geist-mono)] text-[11px] uppercase tracking-[0.25em] text-v-accent opacity-0 transition-colors duration-300 hover:text-v-chalk"
+            data-cursor-label="Home"
+            className="relative inline-flex min-w-0 shrink-0 flex-col items-stretch justify-center gap-1.5 opacity-0"
           >
-            Inquire
-            <span className="absolute bottom-0 left-0 h-px w-full bg-v-accent-dim transition-all duration-500" />
-          </a>
-        </div>
-      </div>
+            <span className="block text-center font-[family-name:var(--font-playfair)] text-[1.75rem] leading-none tracking-[-0.035em] text-v-chalk sm:text-[2rem] md:text-[2.125rem]">
+              Volari
+            </span>
+            <span className="block w-full border-t border-v-smoke/35 pt-1.5 text-center font-[family-name:var(--font-geist-mono)] text-[9px] uppercase leading-none tracking-[0.42em] text-v-silver/80 sm:text-[10px] sm:tracking-[0.48em]">
+              Studio
+            </span>
+          </Link>
 
-      {/* ── Bottom rule ── */}
-      <div
-        ref={ruleRef}
-        className="h-px w-full bg-gradient-to-r from-transparent via-v-smoke/50 to-transparent"
-        style={{ transform: "scaleX(0)" }}
-      />
-    </nav>
+          {/* Magnetic cursor would drift the visual center from the button; keep off this control. */}
+          <button
+            ref={menuTriggerRef}
+            type="button"
+            onClick={openMenu}
+            aria-expanded={menuOpen}
+            aria-controls="site-menu"
+            data-cursor-label="Menu"
+            className="group relative flex h-12 w-12 shrink-0 items-center justify-center rounded-full opacity-0 outline-none focus-visible:ring-2 focus-visible:ring-v-accent/50"
+          >
+            {/* Scale ring+dot only — keeps ref’d button free of hover transform vs GSAP y */}
+            <span
+              className="absolute inset-0 flex items-center justify-center transition-transform duration-300 group-hover:scale-[1.03]"
+              aria-hidden
+            >
+              <span
+                className="absolute inset-0 rounded-full border border-v-smoke/45 transition-[border-color,box-shadow] duration-300 group-hover:border-v-chalk/35 group-hover:shadow-[0_0_24px_rgba(232,232,232,0.12)]"
+                aria-hidden
+              />
+              <span
+                ref={dotRef}
+                className="relative h-2 w-2 rounded-full bg-v-chalk shadow-[0_0_12px_rgba(255,255,255,0.35)] transition-transform duration-300 group-hover:scale-110"
+              />
+            </span>
+            <span className="sr-only">Open menu</span>
+          </button>
+        </div>
+
+        <div
+          ref={ruleRef}
+          className="h-px w-full bg-gradient-to-r from-transparent via-v-smoke/50 to-transparent"
+          style={{ transform: "scaleX(0)" }}
+        />
+      </nav>
+
+      {menuOpen ? (
+        <NavMenuOverlay onClose={() => setMenuOpen(false)} />
+      ) : null}
+    </>
   );
 }

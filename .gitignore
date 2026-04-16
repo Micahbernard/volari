@@ -20,6 +20,9 @@
 # production
 /build
 
+# local reference / vendor copy (not part of app build)
+_water_wave_src/
+
 # misc
 .DS_Store
 *.pem

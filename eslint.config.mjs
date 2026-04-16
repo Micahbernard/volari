@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Reference extract from react-water-wave zip (not part of the app build)
+    "_water_wave_src/**",
   ]),
 ]);
 

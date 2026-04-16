@@ -1,6 +1,8 @@
 export const vertexShader = /* glsl */ `
   uniform float uTime;
+  uniform float uScrollProgress;
   uniform vec2  uMouse;
+  uniform vec2  uResolution;
   varying vec2  vUv;
   varying float vElevation;
 
@@ -52,13 +54,17 @@ export const vertexShader = /* glsl */ `
 
   void main(){
     vUv=uv;
-    float t=uTime*0.038;
+    float scroll=uScrollProgress;
+    float scScroll=scroll;
+    float tBase=uTime*0.036;
+    float tRipple=uTime*0.054;
     vec3 pos=position;
-    float n1=snoise(vec3(pos.xy*0.5,t))*0.16;
-    float n2=snoise(vec3(pos.xy*1.6,t*1.3))*0.05;
+    float n1=snoise(vec3(pos.xy*0.5,tBase+scScroll*0.45))*0.16;
+    float n2=snoise(vec3(pos.xy*1.6,tRipple*1.25+scScroll*0.28))*0.05;
     vec2 mouse=(uMouse-0.5)*2.0;
     float mouseDist=length(pos.xy-mouse);
     float mousePush=smoothstep(1.4,0.0,mouseDist)*0.10;
+
     float elevation=n1+n2+mousePush;
     pos.z+=elevation;
     vElevation=elevation;
@@ -139,46 +145,63 @@ export const fragmentShader = /* glsl */ `
   void main(){
     float aspect=uResolution.x/uResolution.y;
     vec2 p=(vUv-0.5)*vec2(aspect,1.0);
-    float t=uTime*0.038;
-    float scroll=uScrollProgress*1.0;
+    float scroll=uScrollProgress;
+
+    float tSlow=uTime*0.032;
+    float tRipple=uTime*0.048;
+
+    vec2 scrollDrift=vec2(scroll*0.95,-scroll*0.62);
+    vec2 ps=p+scrollDrift;
+
+    float flowAngle=(uTime*0.011+scroll*0.35);
+    mat2 rotFlow=mat2(cos(flowAngle),sin(flowAngle),-sin(flowAngle),cos(flowAngle));
+    vec2 psr=rotFlow*ps;
+
     vec2 mouse=(uMouse-0.5)*vec2(aspect,1.0);
     float mouseProximity=1.0-smoothstep(0.0,0.32,length(p-mouse));
 
+    float scScroll=scroll;
     vec2 q=vec2(
-      fbm(vec3(p*0.28,t)),
-      fbm(vec3(p*0.28+vec2(5.2,1.3),t))
+      fbm(vec3(psr*0.28,tSlow+scScroll*0.32)),
+      fbm(vec3(psr*0.28+vec2(5.2,1.3),tSlow+scScroll*0.24))
     );
     vec2 r=vec2(
-      fbm(vec3(p*0.28+2.8*q+vec2(1.7,9.2),t*0.7+scroll)),
-      fbm(vec3(p*0.28+2.8*q+vec2(8.3,2.8),t*0.9+scroll*0.5))
+      fbm(vec3(psr*0.28+2.8*q+vec2(1.7,9.2),tSlow*0.7+scScroll*1.55)),
+      fbm(vec3(psr*0.28+2.8*q+vec2(8.3,2.8),tRipple*0.88+scScroll*1.25))
     );
-    float f=fbm(vec3(p*0.28+2.0*r+vec2(mouseProximity*0.12),t*0.4));
+    float f=fbm(vec3(psr*0.28+2.0*r+vec2(mouseProximity*0.12),tRipple*0.42+scScroll*0.62));
 
-    // Blue-black tint increases at higher luminance levels
-    // l0/l1 stay neutral, l2-l4 get progressively cooler
-    vec3 l0=vec3(0.020, 0.020, 0.022);
-    vec3 l1=vec3(0.055, 0.057, 0.064);
-    vec3 l2=vec3(0.098, 0.105, 0.122);
-    vec3 l3=vec3(0.138, 0.150, 0.178);
-    vec3 l4=vec3(0.175, 0.192, 0.230);
+    vec3 l0=vec3(0.032, 0.033, 0.037);
+    vec3 l1=vec3(0.068, 0.070, 0.079);
+    vec3 l2=vec3(0.112, 0.117, 0.134);
+    vec3 l3=vec3(0.150, 0.159, 0.187);
+    vec3 l4=vec3(0.185, 0.197, 0.232);
 
     vec3 col=l0;
-    col=mix(col,l1,smoothstep(-0.6,0.5,f)*0.90);
-    col=mix(col,l2,smoothstep(-0.2,0.70,f)*0.75);
+    col=mix(col,l1,smoothstep(-0.45,0.55,f)*0.92);
+    col=mix(col,l2,smoothstep(-0.1,0.72,f)*0.78);
+
     float crest=smoothstep(0.05,0.85,f)*smoothstep(0.10,0.75,length(q));
-    col=mix(col,l3,crest*0.55);
     float peak=smoothstep(0.40,0.95,f*length(r));
-    col=mix(col,l4,peak*0.35);
+
+    float breatheCrest=0.94+0.06*sin(uTime*0.15);
+    float breathePeak=0.96+0.04*sin(uTime*0.11+1.7);
+
+    col=mix(col,l3,crest*0.55*breatheCrest);
+    col=mix(col,l4,peak*0.35*breathePeak);
+
     col+=l2*smoothstep(0.04,0.18,vElevation)*0.30;
     col+=l3*smoothstep(0.10,0.22,vElevation)*0.15;
-    // Tighter falloff — cubic instead of quadratic, smaller radius
     float wake=mouseProximity*mouseProximity*mouseProximity;
     col+=l2*wake*0.35;
     col+=l3*wake*0.20;
     col+=l4*wake*0.08;
-    float vig=1.0-smoothstep(0.05,1.05,length(p*0.80));
-    col*=vig*vig;
-    col*=0.68+0.22*(f*0.6+0.4*length(q));
+
+    float vig=1.0-smoothstep(0.06,0.98,length(p*0.78));
+    col*=pow(vig,1.24);
+    col*=0.74+0.19*(f*0.6+0.4*length(q));
+    float lum=dot(col,vec3(0.2126,0.7152,0.0722));
+    col=mix(vec3(lum),col,0.90);
     col=max(col,vec3(0.0));
 
     gl_FragColor=vec4(col,1.0);

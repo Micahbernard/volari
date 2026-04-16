@@ -54,6 +54,14 @@ export default function CustomCursor() {
       duration: 0.12,
       ease: "power2.out",
     });
+    const labelX = gsap.quickTo(label, "x", {
+      duration: 0.6,
+      ease: "power3.out",
+    });
+    const labelY = gsap.quickTo(label, "y", {
+      duration: 0.6,
+      ease: "power3.out",
+    });
 
     // ── Mouse move handler ──
     const onMouseMove = (e: MouseEvent) => {
@@ -61,6 +69,8 @@ export default function CustomCursor() {
       outerY(e.clientY);
       dotX(e.clientX);
       dotY(e.clientY);
+      labelX(e.clientX);
+      labelY(e.clientY);
     };
 
     // ── Hover states ──
@@ -68,17 +78,18 @@ export default function CustomCursor() {
       const target = e.currentTarget as HTMLElement;
       const cursorLabel = target.getAttribute("data-cursor-label");
 
-      // Expand outer circle
+      // Expand outer circle + switch to ring (0.75 on 2x element = 1.5× visual)
       gsap.to(outer, {
-        scale: 2.5,
-        duration: 0.5,
+        scale: 0.75,
+        duration: 0.45,
         ease: "power3.out",
       });
+      outer.classList.add("cursor-ring");
 
-      // Shrink dot
+      // Shrink dot (0.2 on 2x element = 0.4× visual)
       gsap.to(dot, {
-        scale: 0.4,
-        opacity: 0.5,
+        scale: 0.2,
+        opacity: 1,
         duration: 0.4,
         ease: "power3.out",
       });
@@ -96,14 +107,15 @@ export default function CustomCursor() {
     };
 
     const onLeaveInteractive = () => {
+      outer.classList.remove("cursor-ring");
       gsap.to(outer, {
-        scale: 1,
+        scale: 0.5,
         duration: 0.5,
         ease: "power3.out",
       });
       gsap.to(dot, {
-        scale: 1,
-        opacity: 1,
+        scale: 0.5,
+        opacity: 0.72,
         duration: 0.4,
         ease: "power3.out",
       });
@@ -192,12 +204,13 @@ export default function CustomCursor() {
     hasPointer.current = true;
 
     // Initial state — hidden until first mousemove
-    if (outerRef.current) gsap.set(outerRef.current, { opacity: 0 });
-    if (dotRef.current) gsap.set(dotRef.current, { opacity: 0 });
+    if (outerRef.current) gsap.set(outerRef.current, { opacity: 0, scale: 0.5 });
+    if (dotRef.current) gsap.set(dotRef.current, { opacity: 0, scale: 0.5 });
 
     const showCursor = () => {
       gsap.to(outerRef.current, { opacity: 1, duration: 0.4 });
-      gsap.to(dotRef.current, { opacity: 1, duration: 0.4 });
+      /* Idle: slightly dim in the void; brightens on interactive hover */
+      gsap.to(dotRef.current, { opacity: 0.72, duration: 0.4 });
       window.removeEventListener("mousemove", showCursor);
     };
     window.addEventListener("mousemove", showCursor, { once: true });
@@ -219,40 +232,47 @@ export default function CustomCursor() {
         ref={outerRef}
         className="pointer-events-none fixed top-0 left-0 z-[10000] hidden md:block"
         style={{
-          width: 48,
-          height: 48,
-          marginLeft: -24,
-          marginTop: -24,
+          width: 64,
+          height: 64,
+          marginLeft: -32,
+          marginTop: -32,
           borderRadius: "50%",
           backgroundColor: "white",
           mixBlendMode: "difference",
           willChange: "transform",
+          transform: "scale(0.5)",
+        }}
+        aria-hidden="true"
+      />
+
+      {/* ── Hover label — floats beside cursor ── */}
+      <span
+        ref={labelRef}
+        className="pointer-events-none fixed top-0 left-0 z-[10000] hidden md:block font-[family-name:var(--font-geist-mono)] text-[8px] uppercase tracking-[0.25em] text-v-chalk opacity-0"
+        style={{
+          marginLeft: 20,
+          marginTop: -24,
+          willChange: "transform",
+          transform: "scale(0.8)",
         }}
         aria-hidden="true"
       >
-        {/* ── Hover label — centered inside outer circle ── */}
-        <span
-          ref={labelRef}
-          className="pointer-events-none absolute inset-0 flex items-center justify-center font-[family-name:var(--font-geist-mono)] text-[8px] uppercase tracking-[0.2em] text-black opacity-0"
-          style={{ transform: "scale(0.8)" }}
-        >
-          {""}
-        </span>
-      </div>
+        {""}
+      </span>
 
       {/* ── Inner dot: accent gold, direct tracking ── */}
       <div
         ref={dotRef}
         className="pointer-events-none fixed top-0 left-0 z-[10000] hidden md:block"
         style={{
-          width: 6,
-          height: 6,
-          marginLeft: -3,
-          marginTop: -3,
+          width: 12,
+          height: 12,
+          marginLeft: -6,
+          marginTop: -6,
           borderRadius: "50%",
           backgroundColor: "var(--v-accent)",
           willChange: "transform",
-          mixBlendMode: "difference",
+          transform: "scale(0.5)",
         }}
         aria-hidden="true"
       />

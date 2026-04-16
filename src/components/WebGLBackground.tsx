@@ -10,7 +10,7 @@ import { vertexShader, fragmentShader } from "@/shaders/fluidBackground";
 // ─────────────────────────────────────────────────────────────
 const DPR_RANGE: [number, number] = [1, 1.5];
 const MOUSE_LERP = 0.04;
-const PLANE_SEGMENTS = 128; // 128×128 grid for vertex displacement
+const PLANE_SEGMENTS = 160;
 
 // ─────────────────────────────────────────────────────────────
 // FluidPlane — 128×128 segmented mesh with vertex displacement
@@ -19,6 +19,10 @@ const PLANE_SEGMENTS = 128; // 128×128 grid for vertex displacement
 // Uniforms mutated directly in useFrame.
 // Plane auto-scales to viewport via useThree().viewport.
 // ─────────────────────────────────────────────────────────────
+/** Time scale for shader uTime: full motion vs reduced-motion (see volari-engineering-constraints). */
+const FULL_MOTION_TIME_SCALE = 1;
+const REDUCED_MOTION_TIME_SCALE = 0.1;
+
 function FluidPlane() {
   const materialRef = useRef<THREE.ShaderMaterial>(null);
   const meshRef = useRef<THREE.Mesh>(null);
@@ -28,6 +32,7 @@ function FluidPlane() {
   const mouseTarget = useRef({ x: 0.5, y: 0.5 });
   const mouseCurrent = useRef({ x: 0.5, y: 0.5 });
   const scrollProgress = useRef(0);
+  const motionTimeScale = useRef(FULL_MOTION_TIME_SCALE);
 
   // Shader uniforms — created once, mutated per-frame
   const uniforms = useMemo(
@@ -45,8 +50,8 @@ function FluidPlane() {
     []
   );
 
-  // ── DOM event handlers (passive, ref-only) ──
-  const onMouseMove = useCallback((e: MouseEvent) => {
+  /** Pointer covers mouse, pen, and touch — mousemove alone misses touch drag. */
+  const onPointerMove = useCallback((e: PointerEvent) => {
     mouseTarget.current.x = e.clientX / window.innerWidth;
     mouseTarget.current.y = 1.0 - e.clientY / window.innerHeight;
   }, []);
@@ -61,28 +66,39 @@ function FluidPlane() {
   }, [uniforms]);
 
   useEffect(() => {
-    window.addEventListener("mousemove", onMouseMove, { passive: true });
+    window.addEventListener("pointermove", onPointerMove, { passive: true });
     window.addEventListener("scroll", onScroll, { passive: true });
     window.addEventListener("resize", onResize, { passive: true });
     onResize();
     onScroll();
 
     return () => {
-      window.removeEventListener("mousemove", onMouseMove);
+      window.removeEventListener("pointermove", onPointerMove);
       window.removeEventListener("scroll", onScroll);
       window.removeEventListener("resize", onResize);
     };
-  }, [onMouseMove, onScroll, onResize]);
+  }, [onPointerMove, onScroll, onResize]);
 
-  // ── Per-frame uniform updates ──
+  useEffect(() => {
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const apply = () => {
+      motionTimeScale.current = mq.matches
+        ? REDUCED_MOTION_TIME_SCALE
+        : FULL_MOTION_TIME_SCALE;
+    };
+    apply();
+    mq.addEventListener("change", apply);
+    return () => mq.removeEventListener("change", apply);
+  }, []);
+
   useFrame(({ clock }) => {
     const mat = materialRef.current;
     if (!mat) return;
 
-    mat.uniforms.uTime.value = clock.getElapsedTime();
+    mat.uniforms.uTime.value =
+      clock.getElapsedTime() * motionTimeScale.current;
     mat.uniforms.uScrollProgress.value = scrollProgress.current;
 
-    // Lerp mouse for viscous trailing
     mouseCurrent.current.x +=
       (mouseTarget.current.x - mouseCurrent.current.x) * MOUSE_LERP;
     mouseCurrent.current.y +=
@@ -96,8 +112,6 @@ function FluidPlane() {
 
   return (
     <mesh ref={meshRef}>
-      {/* 128×128 segments — enough for smooth vertex displacement,
-          GPU trivial at 16,384 vertices */}
       <planeGeometry
         args={[viewport.width, viewport.height, PLANE_SEGMENTS, PLANE_SEGMENTS]}
       />
@@ -114,31 +128,9 @@ function FluidPlane() {
 }
 
 // ─────────────────────────────────────────────────────────────
-// ViewportSync — Rebuilds plane geometry on resize
-//
-// When viewport changes, the plane dimensions must update.
-// R3F's viewport object updates automatically on resize;
-// we just need to trigger a geometry rebuild via key prop.
-// This component returns null — it's a logic-only hook host.
-// ─────────────────────────────────────────────────────────────
-function ViewportSync({
-  onResize,
-}: {
-  onResize: (w: number, h: number) => void;
-}) {
-  const { viewport } = useThree();
-
-  useEffect(() => {
-    onResize(viewport.width, viewport.height);
-  }, [viewport.width, viewport.height, onResize]);
-
-  return null;
-}
-
-// ─────────────────────────────────────────────────────────────
 // WebGLBackground — Public component
 //
-// Fixed behind all content at -z-10.
+// Fixed behind all content at -z-1 (see volari-engineering-constraints.mdc).
 // Canvas GL config stripped to minimum for fullscreen shader:
 //   antialias: false, alpha: false, stencil: false, depth: false
 // ─────────────────────────────────────────────────────────────
@@ -149,10 +141,6 @@ export default function WebGLBackground() {
       aria-hidden="true"
     >
       <Canvas
-        onCreated={({ gl }) => {
-          gl.debug.checkShaderErrors = true;
-          console.log("WebGL renderer created:", gl.getContext());
-        }}
         camera={{
           position: [0, 0, 1],
           near: 0.1,

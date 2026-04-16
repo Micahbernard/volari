@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono, Playfair_Display } from "next/font/google";
 import "./globals.css";
 import SmoothScrollProvider from "@/providers/SmoothScrollProvider";
+import WaterRippleProvider from "@/providers/WaterRippleProvider";
 import CustomCursor from "@/components/CustomCursor";
 import Navbar from "@/components/Navbar";
 import WebGLBackground from "@/components/WebGLBackground";
@@ -63,21 +64,23 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${playfair.variable} ${geistMono.variable} antialiased`}
     >
-      <body className="min-h-screen bg-v-black text-v-chalk">
+      <body className="min-h-screen text-v-chalk">
         <SmoothScrollProvider>
-          {/* WebGL fluid background — fixed, behind everything */}
-          <WebGLBackground />
+          <WaterRippleProvider>
+            {/* WebGL fluid background — fixed -z-1 */}
+            <WebGLBackground />
 
-          {/* Navigation — fixed z-50, above content */}
-          <Navbar />
+            {/* Navigation — fixed z-50 */}
+            <Navbar />
 
-          {/* Custom cursor — fixed, above everything */}
-          <CustomCursor />
+            {/* Custom cursor — fixed, above everything */}
+            <CustomCursor />
 
-          {/* Page content — z-0 naturally stacks above the -z-10 canvas */}
-          <main className="relative z-10">
-            <PageTransitionProvider>{children}</PageTransitionProvider>
-          </main>
+            {/* Page content */}
+            <main className="relative z-10">
+              <PageTransitionProvider>{children}</PageTransitionProvider>
+            </main>
+          </WaterRippleProvider>
         </SmoothScrollProvider>
       </body>
     </html>

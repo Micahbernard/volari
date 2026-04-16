@@ -333,7 +333,7 @@ export default function ServicesShowcase() {
             key={service.id}
             ref={setCardRef(i)}
             data-cursor-label="Explore"
-            className="group relative flex w-[85vw] shrink-0 flex-col md:w-[65vw] lg:w-[55vw]"
+            className="group relative flex w-[85vw] shrink-0 flex-col rounded-sm transition-[box-shadow,ring-color] duration-500 ring-1 ring-transparent md:w-[65vw] lg:w-[55vw] hover:shadow-[0_0_48px_-14px_rgba(255,255,255,0.055)] hover:ring-v-smoke/20"
           >
             {/* ── Card visual area — distortion target ── */}
             <div className="relative overflow-hidden rounded-sm">

@@ -4,8 +4,9 @@ import { useEffect, useRef, useMemo } from "react";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import ServicesShowcase from "@/components/ServicesShowcase";
-import WorkShowcase from "@/components/WorkShowcase";
 import PageTransition from "@/components/PageTransition";
+import StudioPillars from "@/components/StudioPillars";
+import SiteFooter from "@/components/SiteFooter";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -35,7 +36,6 @@ export default function Home() {
   const cornerRefs = useRef<(HTMLDivElement | null)[]>([]);
   const metaLeftRef = useRef<HTMLDivElement>(null);
   const metaRightRef = useRef<HTMLDivElement>(null);
-  const scrollIndicatorRef = useRef<HTMLDivElement>(null);
   const sectionRefs = useRef<(HTMLElement | null)[]>([]);
 
   // Split tagline into words for staggered reveal
@@ -55,7 +55,6 @@ export default function Home() {
       // Beat 3  (0.6s) : "VOLARI" characters rise with rotation
       // Beat 4  (1.4s) : Tagline words stagger in
       // Beat 5  (1.6s) : Corner marks + metadata fade in
-      // Beat 6  (2.2s) : Scroll indicator appears
       // ════════════════════════════════════════════════════════
 
       const master = gsap.timeline({
@@ -188,26 +187,6 @@ export default function Home() {
         );
       }
 
-      // ── Beat 6: Scroll indicator ──
-      if (scrollIndicatorRef.current) {
-        master.fromTo(
-          scrollIndicatorRef.current,
-          { opacity: 0 },
-          { opacity: 1, duration: 1.2, ease: "power2.out" },
-          2.4
-        );
-
-        // Infinite gentle bounce
-        gsap.to(scrollIndicatorRef.current, {
-          y: 8,
-          repeat: -1,
-          yoyo: true,
-          duration: 1.5,
-          ease: "sine.inOut",
-          delay: 3.5,
-        });
-      }
-
       // ── Hero scroll parallax ──
       // Title drifts up and fades as user scrolls past hero.
       // Driven by ScrollTrigger, not React state.
@@ -217,8 +196,8 @@ export default function Home() {
         );
         if (heroContent) {
           gsap.to(heroContent, {
-            yPercent: -15,
-            opacity: 0.2,
+            yPercent: -8,
+            opacity: 0.45,
             scrollTrigger: {
               trigger: heroRef.current,
               start: "top top",
@@ -354,33 +333,13 @@ export default function Home() {
             />
           </div>
 
-          {/* ── Side metadata: left ── */}
-          <div
-            ref={metaLeftRef}
-            className="absolute top-1/2 left-6 hidden -translate-y-1/2 -rotate-90 md:left-10 lg:block opacity-0"
-          >
-            <span className="font-[family-name:var(--font-geist-mono)] text-[9px] uppercase tracking-[0.5em] text-v-smoke">
-              Est. 2024
-            </span>
-          </div>
-
-          {/* ── Side metadata: right ── */}
-          <div
-            ref={metaRightRef}
-            className="absolute top-1/2 right-6 hidden -translate-y-1/2 rotate-90 md:right-10 lg:block opacity-0"
-          >
-            <span className="font-[family-name:var(--font-geist-mono)] text-[9px] uppercase tracking-[0.5em] text-v-smoke">
-              Creative Studio
-            </span>
-          </div>
-
           {/* ══════════════════════════════════════════
               MAIN TITLE — Per-character animation
               Each char in its own overflow-hidden clip
               ══════════════════════════════════════════ */}
           <div className="flex flex-col items-center py-16 md:py-24">
             <h1
-              className="flex select-none items-baseline justify-center"
+              className="hero-volari-heading flex select-none items-center justify-center text-[clamp(4rem,17vw,15rem)] leading-none gap-x-[0.05em] sm:gap-x-[0.055em] md:gap-x-[0.06em]"
               style={{ perspective: "1000px" }}
             >
               {HERO_WORD.split("").map((char, i) => (
@@ -391,10 +350,11 @@ export default function Home() {
                 >
                   <span
                     ref={setCharRef(i)}
-                    className="inline-block font-[family-name:var(--font-playfair)] text-[clamp(4rem,17vw,15rem)] font-normal tracking-[-0.04em] text-v-chalk opacity-0"
+                    className="hero-volari-letter inline-block font-[family-name:var(--font-playfair)] font-normal tracking-[0.012em] opacity-0"
                     style={{
                       willChange: "transform, opacity",
                       transformStyle: "preserve-3d",
+                      animationDelay: `${i * 0.09}s`,
                     }}
                   >
                     {char}
@@ -422,6 +382,20 @@ export default function Home() {
             </p>
           </div>
 
+          {/* ── Studio metadata — horizontal, symmetric (no vertical rotation) ── */}
+          <div className="mx-auto mt-10 flex w-full max-w-6xl flex-col items-center justify-between gap-3 px-6 sm:flex-row sm:items-center md:mt-12 md:px-12">
+            <div ref={metaLeftRef} className="opacity-0">
+              <span className="font-[family-name:var(--font-geist-mono)] text-[9px] uppercase tracking-[0.5em] text-v-smoke">
+                Est. 2024
+              </span>
+            </div>
+            <div ref={metaRightRef} className="opacity-0">
+              <span className="font-[family-name:var(--font-geist-mono)] text-[9px] uppercase tracking-[0.5em] text-v-smoke">
+                Creative Studio
+              </span>
+            </div>
+          </div>
+
           {/* ── Bottom rule ── */}
           <div className="flex items-center justify-center px-6 md:px-12">
             <div
@@ -433,117 +407,185 @@ export default function Home() {
             />
           </div>
         </div>
-
-        {/* ── Scroll indicator ── */}
-        <div
-          ref={scrollIndicatorRef}
-          className="absolute bottom-10 left-1/2 flex -translate-x-1/2 flex-col items-center gap-3 opacity-0"
-        >
-          <span className="font-[family-name:var(--font-geist-mono)] text-[9px] uppercase tracking-[0.5em] text-v-smoke">
-            Scroll
-          </span>
-          <div className="h-14 w-px bg-gradient-to-b from-v-smoke/60 to-transparent" />
-        </div>
       </section>
 
       {/* ═══════════════════════════════════════════════════════
           SERVICES — Horizontal scroll showcase
           ═══════════════════════════════════════════════════════ */}
-      <ServicesShowcase />
+      <div id="services"><ServicesShowcase /></div>
 
-      {/* ═══════════════════════════════════════════════════════
-          WORK — Horizontal portfolio with SVG distortion hover
-          ═══════════════════════════════════════════════════════ */}
-      <WorkShowcase />
+      <StudioPillars />
 
       {/* ═══════════════════════════════════════════════════════
           CONTENT SECTIONS
           ═══════════════════════════════════════════════════════ */}
-      <section ref={setSectionRef(0)} className="relative px-6 py-40">
-        <div className="mx-auto max-w-4xl">
-          <div data-animate="rule" className="v-rule mb-12" />
-          <span
-            data-animate="heading"
-            className="mb-4 block font-[family-name:var(--font-geist-mono)] text-[10px] uppercase tracking-[0.4em] text-v-silver opacity-0"
-          >
-            001 &mdash; Philosophy
-          </span>
-          <h2
-            data-animate="heading"
-            className="font-[family-name:var(--font-playfair)] text-[clamp(2rem,5vw,4.5rem)] leading-[1.1] tracking-[-0.02em] text-v-chalk opacity-0"
-          >
-            Where shadow meets
-            <br />
-            <span className="italic text-v-accent">precision</span>
-          </h2>
-          <p
-            data-animate="body"
-            className="mt-8 max-w-xl font-[family-name:var(--font-geist-mono)] text-sm leading-relaxed text-v-silver opacity-0"
-          >
-            Every pixel is deliberate. Every interaction, choreographed. We
-            don&apos;t build websites — we architect immersive digital
-            environments that command attention and convert curiosity into
-            commitment.
-          </p>
+      {/* ═══════════════════════════════════════════════════════
+          001 — PHILOSOPHY
+          ═══════════════════════════════════════════════════════ */}
+      <section
+        id="about"
+        ref={setSectionRef(0)}
+        className="relative px-8 py-32 md:px-16 lg:px-24"
+      >
+        <div className="mx-auto max-w-7xl">
+          {/* Full-width rule above */}
+          <div data-animate="rule" className="v-rule mb-16 md:mb-24" />
+
+          <div className="grid grid-cols-1 gap-12 md:grid-cols-[1fr_2fr] md:gap-24">
+            {/* Left — decorative number + label */}
+            <div className="flex flex-col justify-start pt-2">
+              <span
+                data-animate="heading"
+                className="block font-[family-name:var(--font-playfair)] text-[clamp(4rem,8vw,7rem)] font-normal leading-none tracking-[-0.04em] text-v-smoke/30 opacity-0 select-none"
+              >
+                001
+              </span>
+              <span
+                data-animate="heading"
+                className="mt-4 block font-[family-name:var(--font-geist-mono)] text-[9px] uppercase tracking-[0.5em] text-v-accent opacity-0"
+              >
+                Philosophy
+              </span>
+            </div>
+
+            {/* Right — content */}
+            <div>
+              <h2
+                data-animate="heading"
+                className="font-[family-name:var(--font-playfair)] text-[clamp(2.8rem,5vw,5rem)] leading-[1.05] tracking-[-0.03em] text-v-chalk opacity-0"
+              >
+                Where shadow meets
+                <br />
+                <span className="italic text-v-accent">precision</span>
+              </h2>
+              <p
+                data-animate="body"
+                className="mt-8 max-w-lg font-[family-name:var(--font-geist-mono)] text-[11px] leading-[1.9] text-v-silver opacity-0"
+              >
+                Every pixel is deliberate. Every interaction, choreographed. We
+                don&apos;t build websites — we architect immersive digital
+                environments that command attention and convert curiosity into
+                commitment.
+              </p>
+            </div>
+          </div>
         </div>
       </section>
 
-      <section ref={setSectionRef(1)} className="relative px-6 py-40">
-        <div className="mx-auto max-w-4xl">
-          <div data-animate="rule" className="v-rule mb-12" />
-          <span
-            data-animate="heading"
-            className="mb-4 block font-[family-name:var(--font-geist-mono)] text-[10px] uppercase tracking-[0.4em] text-v-silver opacity-0"
-          >
-            002 &mdash; Capability
-          </span>
-          <h2
-            data-animate="heading"
-            className="font-[family-name:var(--font-playfair)] text-[clamp(2rem,5vw,4.5rem)] leading-[1.1] tracking-[-0.02em] text-v-chalk opacity-0"
-          >
-            Engineering at the
-            <br />
-            <span className="italic text-v-accent">bleeding edge</span>
-          </h2>
-          <p
-            data-animate="body"
-            className="mt-8 max-w-xl font-[family-name:var(--font-geist-mono)] text-sm leading-relaxed text-v-silver opacity-0"
-          >
-            WebGL shaders. GPU-accelerated animations. Sub-frame scroll
-            synchronization. We leverage the full depth of the modern browser to
-            deliver experiences that feel impossible — and perform flawlessly.
-          </p>
+      {/* ═══════════════════════════════════════════════════════
+          002 — CAPABILITY
+          ═══════════════════════════════════════════════════════ */}
+      <section
+        ref={setSectionRef(1)}
+        className="relative px-8 py-32 md:px-16 lg:px-24"
+      >
+        <div className="mx-auto max-w-7xl">
+          <div data-animate="rule" className="v-rule mb-16 md:mb-24" />
+
+          <div className="grid grid-cols-1 gap-12 md:grid-cols-[1fr_2fr] md:gap-24">
+            {/* Left */}
+            <div className="flex flex-col justify-start pt-2">
+              <span
+                data-animate="heading"
+                className="block font-[family-name:var(--font-playfair)] text-[clamp(4rem,8vw,7rem)] font-normal leading-none tracking-[-0.04em] text-v-smoke/30 opacity-0 select-none"
+              >
+                002
+              </span>
+              <span
+                data-animate="heading"
+                className="mt-4 block font-[family-name:var(--font-geist-mono)] text-[9px] uppercase tracking-[0.5em] text-v-accent opacity-0"
+              >
+                Capability
+              </span>
+            </div>
+
+            {/* Right */}
+            <div>
+              <h2
+                data-animate="heading"
+                className="font-[family-name:var(--font-playfair)] text-[clamp(2.8rem,5vw,5rem)] leading-[1.05] tracking-[-0.03em] text-v-chalk opacity-0"
+              >
+                Engineering at the
+                <br />
+                <span className="italic text-v-accent">bleeding edge</span>
+              </h2>
+              <p
+                data-animate="body"
+                className="mt-8 max-w-lg font-[family-name:var(--font-geist-mono)] text-[11px] leading-[1.9] text-v-silver opacity-0"
+              >
+                WebGL shaders. GPU-accelerated animations. Sub-frame scroll
+                synchronization. We leverage the full depth of the modern browser to
+                deliver experiences that feel impossible — and perform flawlessly.
+              </p>
+            </div>
+          </div>
         </div>
       </section>
 
-      <section ref={setSectionRef(2)} className="relative px-6 py-40">
-        <div className="mx-auto max-w-4xl">
-          <div data-animate="rule" className="v-rule mb-12" />
-          <span
-            data-animate="heading"
-            className="mb-4 block font-[family-name:var(--font-geist-mono)] text-[10px] uppercase tracking-[0.4em] text-v-silver opacity-0"
-          >
-            003 &mdash; Contact
-          </span>
-          <h2
-            data-animate="heading"
-            className="font-[family-name:var(--font-playfair)] text-[clamp(2rem,5vw,4.5rem)] leading-[1.1] tracking-[-0.02em] text-v-chalk opacity-0"
-          >
-            Ready to
-            <br />
-            <span className="italic text-v-accent">transcend?</span>
-          </h2>
-          <p
-            data-animate="body"
-            className="mt-8 max-w-xl font-[family-name:var(--font-geist-mono)] text-sm leading-relaxed text-v-silver opacity-0"
-          >
-            The line between ordinary and extraordinary is thinner than you
-            think. Let&apos;s cross it together.
-          </p>
+      {/* ═══════════════════════════════════════════════════════
+          003 — CONTACT
+          ═══════════════════════════════════════════════════════ */}
+      <section
+        id="contact"
+        ref={setSectionRef(2)}
+        className="relative px-8 py-32 md:px-16 lg:px-24"
+      >
+        <div className="mx-auto max-w-7xl">
+          <div data-animate="rule" className="v-rule mb-16 md:mb-24" />
+
+          <div className="grid grid-cols-1 gap-12 md:grid-cols-[1fr_2fr] md:gap-24">
+            {/* Left */}
+            <div className="flex flex-col justify-start pt-2">
+              <span
+                data-animate="heading"
+                className="block font-[family-name:var(--font-playfair)] text-[clamp(4rem,8vw,7rem)] font-normal leading-none tracking-[-0.04em] text-v-smoke/30 opacity-0 select-none"
+              >
+                003
+              </span>
+              <span
+                data-animate="heading"
+                className="mt-4 block font-[family-name:var(--font-geist-mono)] text-[9px] uppercase tracking-[0.5em] text-v-accent opacity-0"
+              >
+                Contact
+              </span>
+            </div>
+
+            {/* Right */}
+            <div>
+              <h2
+                data-animate="heading"
+                className="font-[family-name:var(--font-playfair)] text-[clamp(2.8rem,5vw,5rem)] leading-[1.05] tracking-[-0.03em] text-v-chalk opacity-0"
+              >
+                Ready to
+                <br />
+                <span className="italic text-v-accent">transcend?</span>
+              </h2>
+              <p
+                data-animate="body"
+                className="mt-8 max-w-lg font-[family-name:var(--font-geist-mono)] text-[11px] leading-[1.9] text-v-silver opacity-0"
+              >
+                The line between ordinary and extraordinary is thinner than you
+                think. Let&apos;s cross it together.
+              </p>
+              <div data-animate="body" className="mt-12 opacity-0">
+                <a
+                  href="mailto:hello@volari.studio"
+                  data-cursor-magnetic
+                  data-cursor-label="Connect"
+                  className="group inline-flex items-center gap-4 border border-v-smoke/50 px-8 py-4 font-[family-name:var(--font-geist-mono)] text-[10px] uppercase tracking-[0.4em] text-v-chalk transition-all duration-500 hover:border-v-accent/60 hover:text-v-accent"
+                >
+                  Start a project
+                  <span className="transition-transform duration-500 group-hover:translate-x-1 group-hover:-translate-y-1">
+                    ↗
+                  </span>
+                </a>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
-      <div className="h-[30vh]" />
+      <SiteFooter />
     </PageTransition>
   );
 }
