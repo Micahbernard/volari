@@ -42,3 +42,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Machine-local junction to global Cursor skills (~/.cursor/skills); do not commit
+.cursor/skills
