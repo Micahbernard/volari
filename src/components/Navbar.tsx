@@ -5,7 +5,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useLenis } from "@/providers/SmoothScrollProvider";
-import { useWaterRipple } from "@/providers/WaterRippleProvider";
 import NavMenuOverlay from "@/components/NavMenuOverlay";
 
 gsap.registerPlugin(ScrollTrigger);
@@ -17,7 +16,6 @@ gsap.registerPlugin(ScrollTrigger);
 
 export default function Navbar() {
   const lenis = useLenis();
-  const waterRipple = useWaterRipple();
   const [menuOpen, setMenuOpen] = useState(false);
 
   const navRef = useRef<HTMLElement>(null);
@@ -35,19 +33,6 @@ export default function Navbar() {
     if (menuOpen) lenis.stop();
     else lenis.start();
   }, [lenis, menuOpen]);
-
-  useEffect(() => {
-    if (!menuOpen) return;
-    const btn = menuTriggerRef.current;
-    if (!btn) return;
-    const r = btn.getBoundingClientRect();
-    const cx = r.left + r.width / 2;
-    const cy = r.top + r.height / 2;
-    const id = requestAnimationFrame(() => {
-      waterRipple.dropAtClientPoint(cx, cy, 28, 0.12);
-    });
-    return () => cancelAnimationFrame(id);
-  }, [menuOpen, waterRipple]);
 
   const dotRef = useRef<HTMLSpanElement>(null);
 
