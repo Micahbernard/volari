@@ -120,56 +120,81 @@ export default function StudioPillars() {
     <section
       id="studio"
       ref={sectionRef}
-      className="relative border-t border-v-smoke/15 bg-v-black/20 px-8 py-24 md:px-16 md:py-32 lg:px-24"
+      className="relative border-t border-v-smoke/15 bg-v-black/20 px-8 py-32 sm:px-12 md:px-20 lg:px-28 xl:px-40 2xl:px-52"
     >
-      <div className="mx-auto max-w-7xl">
+      <div className="mx-auto w-full max-w-7xl">
         <div
           data-pillar-rule
           className="v-rule mb-14 md:mb-20"
           style={{ transform: "scaleX(0)" }}
         />
 
-        <div data-pillar-intro className="mb-14 max-w-2xl opacity-0 md:mb-20">
-          <p className="font-[family-name:var(--font-geist-mono)] text-[9px] uppercase tracking-[0.5em] text-v-accent">
-            How we work
-          </p>
-          <h2 className="mt-4 font-[family-name:var(--font-playfair)] text-[clamp(1.75rem,4vw,2.75rem)] leading-[1.15] tracking-[-0.02em] text-v-chalk">
-            Direction, craft, and delivery
-          </h2>
-          <p className="mt-4 font-[family-name:var(--font-geist-mono)] text-[11px] leading-[1.85] text-v-silver">
-            Three beats — one continuous line from intent to launch. Each phase
-            is discrete; together they are the Volari method.
-          </p>
+        <div
+          data-pillar-intro
+          className="mb-20 grid grid-cols-1 gap-10 text-left opacity-0 md:mb-24 md:grid-cols-2 md:items-start md:gap-12 lg:gap-14"
+        >
+          <div className="min-w-0 text-left">
+            <p className="font-[family-name:var(--font-geist-mono)] text-[9px] uppercase tracking-[0.5em] text-v-accent">
+              How we work
+            </p>
+            <h2 className="mt-5 font-[family-name:var(--font-playfair)] text-[clamp(2rem,4.2vw,3rem)] leading-[1.1] tracking-[-0.02em] text-v-chalk">
+              Direction, craft,
+              <br className="hidden sm:inline" /> and delivery.
+            </h2>
+            <p className="mt-6 max-w-lg font-[family-name:var(--font-geist-mono)] text-[11px] leading-[1.95] text-v-silver">
+              Three beats — one continuous line from intent to launch. Each
+              phase is discrete; together they are the Volari method.
+            </p>
+          </div>
+          <div className="relative aspect-square w-full max-w-md overflow-hidden rounded-sm border border-v-smoke/20 bg-v-black/40 md:max-w-none md:justify-self-stretch">
+            <div className="absolute inset-0">
+              <PillarVisual index={0} />
+            </div>
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-v-black/50 via-transparent to-transparent" />
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 gap-10 md:grid-cols-3 md:gap-8 lg:gap-10">
+        <div className="grid grid-cols-1 gap-12 sm:grid-cols-3 sm:items-start sm:gap-6 md:gap-10">
           {PILLARS.map((pillar, index) => (
             <article
               key={pillar.title}
               data-pillar-card
-              className="group flex flex-col opacity-0"
+              className="group relative flex flex-col opacity-0"
             >
-              <div className="relative mb-6 aspect-[4/3] overflow-hidden rounded-sm border border-v-smoke/20 bg-v-black/30 transition-colors duration-500 group-hover:border-v-smoke/35">
-                <PillarVisual index={index} />
-                <div className="absolute bottom-3 left-3 font-[family-name:var(--font-geist-mono)] text-[8px] uppercase tracking-[0.35em] text-v-smoke/50">
-                  {pillar.title}
+              <span className="font-[family-name:var(--font-geist-mono)] text-[9px] uppercase tracking-[0.45em] text-v-accent/70">
+                {String(index + 1).padStart(2, "0")}
+              </span>
+
+              <div className="relative mt-5 aspect-[4/5] overflow-hidden rounded-sm border border-v-smoke/20 bg-v-black/40 transition-all duration-700 group-hover:border-v-accent/35">
+                <div className="absolute inset-0 transition-transform duration-[1200ms] ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-[1.04]">
+                  <PillarVisual index={index} />
+                </div>
+                <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-v-black/80 via-v-black/10 to-transparent" />
+                <div className="absolute inset-x-4 bottom-4 flex items-end justify-between">
+                  <span className="font-[family-name:var(--font-geist-mono)] text-[8px] uppercase tracking-[0.4em] text-v-chalk/70">
+                    {pillar.title}
+                  </span>
+                  <span className="h-px w-8 bg-v-accent/60 transition-all duration-500 group-hover:w-14 group-hover:bg-v-accent" />
                 </div>
               </div>
 
-              <h3 className="font-[family-name:var(--font-playfair)] text-xl tracking-[-0.02em] text-v-chalk md:text-[1.35rem]">
+              <h3 className="mt-6 font-[family-name:var(--font-playfair)] text-[1.4rem] tracking-[-0.02em] text-v-chalk md:text-[1.5rem]">
                 {pillar.title}
               </h3>
-              <p className="mt-3 flex-1 font-[family-name:var(--font-geist-mono)] text-[11px] leading-[1.85] text-v-silver">
+              <p className="mt-3 flex-1 font-[family-name:var(--font-geist-mono)] text-[11px] leading-[1.9] text-v-silver">
                 {pillar.body}
               </p>
               <a
                 href={pillar.href}
-                className="mt-6 inline-flex w-fit items-center gap-2 font-[family-name:var(--font-geist-mono)] text-[9px] uppercase tracking-[0.35em] text-v-accent/90 transition-colors hover:text-v-chalk"
+                className="mt-6 inline-flex w-fit items-center gap-3 font-[family-name:var(--font-geist-mono)] text-[9px] uppercase tracking-[0.4em] text-v-accent transition-all duration-500 hover:text-v-chalk"
                 data-cursor-magnetic
                 data-cursor-label="Open"
               >
                 {pillar.cta}
-                <span aria-hidden className="transition-transform group-hover:translate-x-0.5">
+                <span
+                  aria-hidden
+                  className="transition-transform duration-500 group-hover:translate-x-1.5"
+                >
                   →
                 </span>
               </a>

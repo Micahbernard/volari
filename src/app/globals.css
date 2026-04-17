@@ -277,7 +277,8 @@ body::after {
   background-blend-mode: overlay, lighten, lighten, normal, normal;
   background-clip: text;
   -webkit-background-clip: text;
-  animation: hero-volari-glitter-metal 5.5s linear infinite;
+  /* Ambient drift + specular alignment driven by JS rAF (see page.tsx)
+     so the specular blade can steer toward the cursor in real time. */
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -320,4 +321,19 @@ body::after {
 .cursor-ring {
   background-color: transparent !important;
   border: 3px solid white;
+}
+
+/* ── Navbar decanter (liquid fill menu button) ── */
+@keyframes decanter-wave-shift {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+@keyframes decanter-wave-shift-alt {
+  0% { transform: translateX(-50%); }
+  100% { transform: translateX(0); }
+}
+@keyframes decanter-bubble {
+  0%   { transform: translateY(0) scale(0.6); opacity: 0; }
+  15%  { opacity: 0.9; }
+  100% { transform: translateY(-34px) scale(1); opacity: 0; }
 }

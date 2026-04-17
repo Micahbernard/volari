@@ -1,29 +1,36 @@
 export default function SiteFooter() {
   const year = new Date().getFullYear();
 
+  const sectionTitle =
+    "mb-0 font-[family-name:var(--font-geist-mono)] text-[10px] font-medium uppercase leading-normal tracking-[0.28em] text-v-smoke";
+  const linkClass =
+    "inline-block font-[family-name:var(--font-geist-mono)] text-[11px] uppercase leading-snug tracking-[0.18em] text-v-silver transition-colors hover:text-v-chalk";
+
   return (
-    <footer className="relative border-t border-v-smoke/20 bg-v-black/30 px-8 py-16 md:px-16 lg:px-24">
+    <footer
+      id="contact"
+      className="relative scroll-mt-20 border-t border-v-smoke/20 bg-v-black/30 px-8 py-16 sm:px-12 md:px-20 lg:px-28 xl:px-40 2xl:px-52"
+    >
       <div className="mx-auto max-w-7xl">
-        <div className="grid grid-cols-1 gap-12 md:grid-cols-3 md:gap-16">
-          <div>
-            <h2 className="font-[family-name:var(--font-geist-mono)] text-[9px] uppercase tracking-[0.45em] text-v-smoke">
-              Studio
-            </h2>
+        {/* Primary: link groups — stable grid, no column squeeze */}
+        <div className="grid grid-cols-1 gap-10 sm:grid-cols-3 sm:gap-x-10 sm:gap-y-8 md:gap-x-16">
+          <div className="min-w-0">
+            <h2 className={sectionTitle}>Studio</h2>
             <ul className="mt-5 space-y-3">
-              <li>
+              <li className="min-w-0">
                 <a
                   href="#studio"
-                  className="font-[family-name:var(--font-geist-mono)] text-[11px] uppercase tracking-[0.2em] text-v-silver transition-colors hover:text-v-chalk"
+                  className={linkClass}
                   data-cursor-magnetic
                   data-cursor-label="View"
                 >
                   Method
                 </a>
               </li>
-              <li>
+              <li className="min-w-0">
                 <a
                   href="#about"
-                  className="font-[family-name:var(--font-geist-mono)] text-[11px] uppercase tracking-[0.2em] text-v-silver transition-colors hover:text-v-chalk"
+                  className={linkClass}
                   data-cursor-magnetic
                   data-cursor-label="Read"
                 >
@@ -33,15 +40,13 @@ export default function SiteFooter() {
             </ul>
           </div>
 
-          <div>
-            <h2 className="font-[family-name:var(--font-geist-mono)] text-[9px] uppercase tracking-[0.45em] text-v-smoke">
-              Work
-            </h2>
+          <div className="min-w-0">
+            <h2 className={sectionTitle}>Work</h2>
             <ul className="mt-5 space-y-3">
-              <li>
+              <li className="min-w-0">
                 <a
                   href="#services"
-                  className="font-[family-name:var(--font-geist-mono)] text-[11px] uppercase tracking-[0.2em] text-v-silver transition-colors hover:text-v-chalk"
+                  className={linkClass}
                   data-cursor-magnetic
                   data-cursor-label="Explore"
                 >
@@ -51,25 +56,23 @@ export default function SiteFooter() {
             </ul>
           </div>
 
-          <div>
-            <h2 className="font-[family-name:var(--font-geist-mono)] text-[9px] uppercase tracking-[0.45em] text-v-smoke">
-              Contact
-            </h2>
+          <div className="min-w-0">
+            <h2 className={sectionTitle}>Contact</h2>
             <ul className="mt-5 space-y-3">
-              <li>
+              <li className="min-w-0">
                 <a
                   href="#contact"
-                  className="font-[family-name:var(--font-geist-mono)] text-[11px] uppercase tracking-[0.2em] text-v-silver transition-colors hover:text-v-chalk"
+                  className={linkClass}
                   data-cursor-magnetic
                   data-cursor-label="Connect"
                 >
                   Inquire
                 </a>
               </li>
-              <li>
+              <li className="min-w-0 break-all sm:break-normal">
                 <a
                   href="mailto:hello@volari.studio"
-                  className="font-[family-name:var(--font-geist-mono)] text-[11px] tracking-[0.08em] text-v-accent/90 transition-colors hover:text-v-chalk"
+                  className="inline-block font-[family-name:var(--font-geist-mono)] text-[11px] leading-snug tracking-[0.06em] text-v-accent/90 transition-colors hover:text-v-chalk"
                   data-cursor-magnetic
                   data-cursor-label="Email"
                 >
@@ -80,16 +83,21 @@ export default function SiteFooter() {
           </div>
         </div>
 
-        <div className="mt-14 grid grid-cols-1 gap-6 border-t border-v-smoke/15 pt-10 sm:grid-cols-3 sm:items-center sm:gap-4">
-          <span className="justify-self-start font-[family-name:var(--font-playfair)] text-xl tracking-[-0.02em] text-v-chalk sm:justify-self-start">
-            Volari
-          </span>
-          <span className="max-w-md justify-self-center text-center font-[family-name:var(--font-geist-mono)] text-[9px] uppercase leading-relaxed tracking-[0.35em] text-v-smoke">
-            Digital Experiences Studio — Bespoke Creative Technology
-          </span>
-          <span className="justify-self-start font-[family-name:var(--font-geist-mono)] text-[9px] uppercase tracking-[0.35em] text-v-smoke/80 sm:justify-self-end">
-            &copy; {year} Volari
-          </span>
+        {/* Secondary: brand + legal — stacked flow, tagline full width (fixes overlap) */}
+        <div className="mt-14 border-t border-v-smoke/15 pt-10">
+          <div className="flex flex-col gap-5">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-baseline sm:justify-between sm:gap-6">
+              <p className="font-[family-name:var(--font-playfair)] text-[1.625rem] leading-none tracking-[-0.02em] text-v-chalk md:text-[1.75rem]">
+                Volari
+              </p>
+              <p className="shrink-0 font-[family-name:var(--font-geist-mono)] text-[10px] uppercase leading-normal tracking-[0.2em] text-v-smoke/75 sm:text-right">
+                © {year} Volari
+              </p>
+            </div>
+            <p className="max-w-2xl text-pretty font-[family-name:var(--font-geist-mono)] text-[10px] uppercase leading-[1.65] tracking-[0.12em] text-v-smoke sm:text-[11px] sm:tracking-[0.14em]">
+              Digital Experiences Studio — Bespoke Creative Technology
+            </p>
+          </div>
         </div>
       </div>
     </footer>

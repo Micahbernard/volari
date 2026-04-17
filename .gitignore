@@ -43,5 +43,10 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# Local agent / IDE metadata
+.claude/
+
 # Machine-local junction to global Cursor skills (~/.cursor/skills); do not commit
-.cursor/skills
+# Leading slash: only the repo-root .cursor/skills (junction). Project skills under
+# volari-site/.cursor/skills/ remain trackable.
+/.cursor/skills

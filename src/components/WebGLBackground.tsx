@@ -12,6 +12,10 @@ const DPR_RANGE: [number, number] = [1, 1.5];
 const MOUSE_LERP = 0.04;
 const PLANE_SEGMENTS = 160;
 
+// Ripple ring buffer — must match `uniform vec4 uRipples[6]` in shader.
+const RIPPLE_COUNT = 6;
+const RIPPLE_LIFETIME = 3.6; // seconds, matches shader guard
+
 // ─────────────────────────────────────────────────────────────
 // FluidPlane — 128×128 segmented mesh with vertex displacement
 //
@@ -33,10 +37,20 @@ function FluidPlane() {
   const mouseCurrent = useRef({ x: 0.5, y: 0.5 });
   const scrollProgress = useRef(0);
   const motionTimeScale = useRef(FULL_MOTION_TIME_SCALE);
+  // Shader time, mirrored into ref so pointerdown can stamp ripple startTime
+  // without racing the frame loop.
+  const shaderTime = useRef(0);
+  // Next slot in the ripple ring buffer — overwrites oldest click.
+  const rippleSlot = useRef(0);
 
   // Shader uniforms — created once, mutated per-frame
-  const uniforms = useMemo(
-    () => ({
+  const uniforms = useMemo(() => {
+    const ripples = Array.from(
+      { length: RIPPLE_COUNT },
+      // z = -1000 keeps age huge so inactive slots stay dead even if w check fails
+      () => new THREE.Vector4(0, 0, -1000, 0)
+    );
+    return {
       uTime: { value: 0 },
       uMouse: { value: new THREE.Vector2(0.5, 0.5) },
       uScrollProgress: { value: 0 },
@@ -46,10 +60,11 @@ function FluidPlane() {
           typeof window !== "undefined" ? window.innerHeight : 1080
         ),
       },
-    }),
-    []
-  );
+      uRipples: { value: ripples },
+    };
+  }, []);
 
+  // ── DOM event handlers (passive, ref-only) ──
   /** Pointer covers mouse, pen, and touch — mousemove alone misses touch drag. */
   const onPointerMove = useCallback((e: PointerEvent) => {
     mouseTarget.current.x = e.clientX / window.innerWidth;
@@ -65,10 +80,30 @@ function FluidPlane() {
     uniforms.uResolution.value.set(window.innerWidth, window.innerHeight);
   }, [uniforms]);
 
+  // ── Left-click → spawn ripple ──
+  // Writes into next ring-buffer slot. Y is flipped to match uMouse
+  // convention (1.0 - clientY / h → bottom-up).
+  const onPointerDown = useCallback(
+    (e: PointerEvent) => {
+      if (e.button !== 0) return; // left button only
+      const slot = rippleSlot.current;
+      const ripple = uniforms.uRipples.value[slot] as THREE.Vector4;
+      ripple.set(
+        e.clientX / window.innerWidth,
+        1.0 - e.clientY / window.innerHeight,
+        shaderTime.current,
+        1.0
+      );
+      rippleSlot.current = (slot + 1) % RIPPLE_COUNT;
+    },
+    [uniforms]
+  );
+
   useEffect(() => {
     window.addEventListener("pointermove", onPointerMove, { passive: true });
     window.addEventListener("scroll", onScroll, { passive: true });
     window.addEventListener("resize", onResize, { passive: true });
+    window.addEventListener("pointerdown", onPointerDown, { passive: true });
     onResize();
     onScroll();
 
@@ -76,8 +111,9 @@ function FluidPlane() {
       window.removeEventListener("pointermove", onPointerMove);
       window.removeEventListener("scroll", onScroll);
       window.removeEventListener("resize", onResize);
+      window.removeEventListener("pointerdown", onPointerDown);
     };
-  }, [onPointerMove, onScroll, onResize]);
+  }, [onPointerMove, onScroll, onResize, onPointerDown]);
 
   useEffect(() => {
     const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -91,12 +127,14 @@ function FluidPlane() {
     return () => mq.removeEventListener("change", apply);
   }, []);
 
+  // ── Per-frame uniform updates ──
   useFrame(({ clock }) => {
     const mat = materialRef.current;
     if (!mat) return;
 
-    mat.uniforms.uTime.value =
-      clock.getElapsedTime() * motionTimeScale.current;
+    const t = clock.getElapsedTime() * motionTimeScale.current;
+    shaderTime.current = t;
+    mat.uniforms.uTime.value = t;
     mat.uniforms.uScrollProgress.value = scrollProgress.current;
 
     mouseCurrent.current.x +=
@@ -108,6 +146,13 @@ function FluidPlane() {
       mouseCurrent.current.x,
       mouseCurrent.current.y
     );
+
+    // Retire expired ripples so the shader loop skips them cheaply.
+    const ripples = mat.uniforms.uRipples.value as THREE.Vector4[];
+    for (let i = 0; i < ripples.length; i++) {
+      const r = ripples[i];
+      if (r.w > 0.5 && t - r.z > RIPPLE_LIFETIME) r.w = 0;
+    }
   });
 
   return (

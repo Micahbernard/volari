@@ -5,7 +5,6 @@ import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import ServicesShowcase from "@/components/ServicesShowcase";
 import PageTransition from "@/components/PageTransition";
-import StudioPillars from "@/components/StudioPillars";
 import SiteFooter from "@/components/SiteFooter";
 
 gsap.registerPlugin(ScrollTrigger);
@@ -36,7 +35,6 @@ export default function Home() {
   const cornerRefs = useRef<(HTMLDivElement | null)[]>([]);
   const metaLeftRef = useRef<HTMLDivElement>(null);
   const metaRightRef = useRef<HTMLDivElement>(null);
-  const sectionRefs = useRef<(HTMLElement | null)[]>([]);
 
   // Split tagline into words for staggered reveal
   const taglineWords = useMemo(
@@ -208,59 +206,243 @@ export default function Home() {
         }
       }
 
-      // ── Scroll-triggered section reveals ──
-      sectionRefs.current.forEach((section) => {
-        if (!section) return;
-
-        const headings = section.querySelectorAll("[data-animate='heading']");
-        const body = section.querySelector("[data-animate='body']");
-        const rule = section.querySelector("[data-animate='rule']");
-
-        const tl = gsap.timeline({
-          scrollTrigger: {
-            trigger: section,
-            start: "top 80%",
-            end: "top 30%",
-            toggleActions: "play none none none",
-          },
-        });
-
-        if (rule) {
-          tl.fromTo(
-            rule,
-            { scaleX: 0, transformOrigin: "left center" },
-            { scaleX: 1, duration: 1.2, ease: "expo.out" },
-            0
-          );
-        }
-
-        if (headings.length) {
-          tl.fromTo(
-            headings,
-            { clipPath: "inset(0 100% 0 0)", opacity: 0 },
-            {
-              clipPath: "inset(0 0% 0 0)",
-              opacity: 1,
-              duration: 1.4,
-              stagger: 0.08,
-              ease: "expo.out",
-            },
-            0.1
-          );
-        }
-
-        if (body) {
-          tl.fromTo(
-            body,
-            { y: 40, opacity: 0 },
-            { y: 0, opacity: 1, duration: 1, ease: "power3.out" },
-            0.3
-          );
-        }
-      });
     });
 
     return () => ctx.revert();
+  }, []);
+
+  // ── Hero cursor gravity ──
+  // After entrance completes, each letter tilts on a 3D axis toward the
+  // cursor. Closer letters tilt harder, lift forward (translateZ), and
+  // pick up a faint gold drop-shadow glow. rAF lerp keeps it buttery.
+  useEffect(() => {
+    if (
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    ) {
+      return;
+    }
+    const chars = charRefs.current.filter(Boolean) as HTMLSpanElement[];
+    if (!chars.length) return;
+
+    let active = false;
+    const startTimeout = window.setTimeout(() => {
+      active = true;
+    }, 3000);
+
+    type CharState = {
+      tx: number;
+      ty: number;
+      tz: number;
+      rx: number;
+      ry: number;
+      glow: number;
+      ttx: number;
+      tty: number;
+      ttz: number;
+      trx: number;
+      tryy: number;
+      tglow: number;
+    };
+    const state: CharState[] = chars.map(() => ({
+      tx: 0,
+      ty: 0,
+      tz: 0,
+      rx: 0,
+      ry: 0,
+      glow: 0,
+      ttx: 0,
+      tty: 0,
+      ttz: 0,
+      trx: 0,
+      tryy: 0,
+      tglow: 0,
+    }));
+
+    let mouseX = -99999;
+    let mouseY = -99999;
+    let lastActivity = -Infinity; // ms — last pointermove
+    let idleAmp = 0; // 0..1 envelope for idle breath
+
+    const onMove = (e: PointerEvent) => {
+      mouseX = e.clientX;
+      mouseY = e.clientY;
+      lastActivity = performance.now();
+    };
+    const onLeave = () => {
+      mouseX = -99999;
+      mouseY = -99999;
+    };
+
+    window.addEventListener("pointermove", onMove, { passive: true });
+    window.addEventListener("pointerleave", onLeave);
+    window.addEventListener("blur", onLeave);
+
+    const MAX_DIST = 320;
+    const LERP = 0.09;
+    const AMBIENT_PERIOD = 5.5; // seconds — matches prior CSS cadence
+    let raf = 0;
+
+    const tick = () => {
+      // Ambient clock — smooth looping via sin ease for layers whose wrap
+      // would be visible (bokeh, steel); sawtooth is fine for grain (tiles
+      // repeat at 72px) and specular (wraps off-letter, so invisible).
+      const now = performance.now() / 1000;
+      const phase = (now / AMBIENT_PERIOD) % 1; // 0..1 sawtooth
+      const sinE = 0.5 - 0.5 * Math.cos(phase * Math.PI * 2); // 0..1..0 C¹-smooth
+      const sinD = sinE - 0.5; // -0.5..0.5, centered
+
+      // ── Idle breath envelope ──
+      // Ramps up when cursor leaves viewport or hasn't moved in 2s;
+      // ramps down instantly on cursor return. Only runs post-entrance.
+      const cursorPresent =
+        mouseX !== -99999 && performance.now() - lastActivity < 2000;
+      const targetIdleAmp = active && !cursorPresent ? 1 : 0;
+      idleAmp += (targetIdleAmp - idleAmp) * 0.04;
+
+      for (let i = 0; i < chars.length; i++) {
+        const el = chars[i];
+        const r = el.getBoundingClientRect();
+        const cx = r.left + r.width / 2;
+        const cy = r.top + r.height / 2;
+        const dx = mouseX - cx;
+        const dy = mouseY - cy;
+        const dist = Math.hypot(dx, dy);
+        const t = 1 - Math.min(1, dist / MAX_DIST);
+        const soft = t * t * (3 - 2 * t);
+
+        // ── Transform + glow targets (gated to post-entrance) ──
+        if (active) {
+          const s = state[i];
+          s.trx = (-dy / MAX_DIST) * 14 * soft;
+          s.tryy = (dx / MAX_DIST) * 14 * soft;
+          s.ttz = 28 * soft;
+          s.ttx = (dx / MAX_DIST) * 5 * soft;
+          s.tty = (dy / MAX_DIST) * 5 * soft;
+          s.tglow = soft;
+        }
+
+        // ── Ambient layer positions ──
+        // Grain: sawtooth OK (pattern tiles at 72px so wrap is invisible)
+        const grainX = phase * 72;
+        const grainY = phase * 56;
+        // Bokeh A/B: sin ping-pong centered — no wrap stutter
+        const bokAx = 45 + sinD * 34; // 28..62
+        const bokAy = 45 + sinD * 14; // 38..52
+        const bokBx = 55 - sinD * 34; // 72..38 (opposite phase)
+        const bokBy = 55 - sinD * 14; // 62..48
+        // Specular: sawtooth OK (both endpoints position the blade off-letter)
+        const specAmbX = 140 - phase * 185; // 140% → -45%
+        // Steel body: sin ping-pong so the steel gradient eases back and forth
+        const steelX = sinE * 100; // 0..100..0 smooth
+
+        // ── Cursor-steered specular position ──
+        // dx/dy → 0..100% within letter; clamped, eased via soft
+        const cDx = Math.max(-1, Math.min(1, dx / 220));
+        const cDy = Math.max(-1, Math.min(1, dy / 140));
+        const cursorSpecX = 50 + cDx * 50;
+        const cursorSpecY = 50 + cDy * 50;
+        const specX = specAmbX * (1 - soft) + cursorSpecX * soft;
+        const specY = 50 * (1 - soft) + cursorSpecY * soft;
+
+        el.style.backgroundPosition =
+          `${grainX.toFixed(1)}px ${grainY.toFixed(1)}px,` +
+          ` ${bokAx.toFixed(1)}% ${bokAy.toFixed(1)}%,` +
+          ` ${bokBx.toFixed(1)}% ${bokBy.toFixed(1)}%,` +
+          ` ${specX.toFixed(1)}% ${specY.toFixed(1)}%,` +
+          ` ${steelX.toFixed(1)}% 50%`;
+      }
+
+      for (let i = 0; i < chars.length; i++) {
+        const el = chars[i];
+        const s = state[i];
+        s.tx += (s.ttx - s.tx) * LERP;
+        s.ty += (s.tty - s.ty) * LERP;
+        s.tz += (s.ttz - s.tz) * LERP;
+        s.rx += (s.trx - s.rx) * LERP;
+        s.ry += (s.tryy - s.ry) * LERP;
+        s.glow += (s.tglow - s.glow) * LERP;
+
+        // Skip style writes once below threshold to save paints
+        const skip =
+          !active &&
+          idleAmp < 0.005 &&
+          Math.abs(s.tx) < 0.02 &&
+          Math.abs(s.ty) < 0.02 &&
+          Math.abs(s.tz) < 0.02 &&
+          Math.abs(s.rx) < 0.02 &&
+          Math.abs(s.ry) < 0.02 &&
+          s.glow < 0.005;
+        if (!skip) {
+          // Idle breath — staggered sin oscillators per letter, scaled by envelope
+          const ph = i * 0.42;
+          const idleRx = Math.sin(now * 0.55 + ph) * 0.3 * idleAmp;
+          const idleRy = Math.sin(now * 0.37 + ph + 1.3) * 0.4 * idleAmp;
+          const idleScale = 1 + Math.sin(now * 0.42 + ph) * 0.008 * idleAmp;
+          const idleTy = Math.sin(now * 0.31 + ph + 0.7) * 0.6 * idleAmp;
+
+          el.style.transform = `translate3d(${s.tx.toFixed(2)}px, ${(
+            s.ty + idleTy
+          ).toFixed(2)}px, ${s.tz.toFixed(2)}px) rotateX(${(
+            s.rx + idleRx
+          ).toFixed(2)}deg) rotateY(${(s.ry + idleRy).toFixed(
+            2
+          )}deg) scale(${idleScale.toFixed(4)})`;
+          const g = s.glow;
+          // Chromatic edge at tilt — RGB split keyed to rotateY sign.
+          // Applied BEFORE silver bloom so bloom softens the fringe into
+          // a subtle material weight cue rather than a graphic effect.
+          const rySoft = Math.min(1, Math.abs(s.ry) / 14);
+          const signY = s.ry >= 0 ? 1 : -1;
+          const parts: string[] = [];
+
+          if (rySoft > 0.03) {
+            const off = 1 * rySoft;
+            const ca = (0.2 * rySoft).toFixed(3);
+            // Warm channel drifts with tilt direction; cool opposite.
+            parts.push(
+              `drop-shadow(${(signY * off).toFixed(
+                2
+              )}px 0 0 rgba(255,132,110,${ca}))`
+            );
+            parts.push(
+              `drop-shadow(${(-signY * off).toFixed(
+                2
+              )}px 0 0 rgba(110,180,240,${ca}))`
+            );
+          }
+
+          // Tight on-glyph silver glow — hugs letterform, no wide halo.
+          if (g >= 0.008) {
+            const a1 = (0.55 * g).toFixed(3);
+            const a2 = (0.35 * g).toFixed(3);
+            const r1 = (1.2 * g).toFixed(2);
+            const r2 = (3 * g).toFixed(2);
+            const br = (1 + 0.12 * g).toFixed(3);
+            parts.push(
+              `drop-shadow(0 0 ${r1}px rgba(225,232,240,${a1}))`
+            );
+            parts.push(
+              `drop-shadow(0 0 ${r2}px rgba(207,216,226,${a2}))`
+            );
+            parts.push(`brightness(${br})`);
+          }
+
+          el.style.filter = parts.length ? parts.join(" ") : "";
+        }
+      }
+
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+
+    return () => {
+      window.clearTimeout(startTimeout);
+      cancelAnimationFrame(raf);
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerleave", onLeave);
+      window.removeEventListener("blur", onLeave);
+    };
   }, []);
 
   // ── Ref setters ──
@@ -273,10 +455,6 @@ export default function Home() {
   const setCornerRef = (i: number) => (el: HTMLDivElement | null) => {
     cornerRefs.current[i] = el;
   };
-  const setSectionRef = (i: number) => (el: HTMLElement | null) => {
-    sectionRefs.current[i] = el;
-  };
-
   return (
     <PageTransition>
       {/* ═══════════════════════════════════════════════════════
@@ -293,8 +471,9 @@ export default function Home() {
           HERO — Full viewport, cinematic entrance
           ═══════════════════════════════════════════════════════ */}
       <section
+        id="about"
         ref={heroRef}
-        className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden"
+        className="relative flex min-h-screen scroll-mt-20 flex-col items-center justify-center overflow-hidden"
       >
         {/* Parallax wrapper — moves as a unit on scroll */}
         <div data-hero-content className="relative w-full">
@@ -345,7 +524,7 @@ export default function Home() {
               {HERO_WORD.split("").map((char, i) => (
                 <span
                   key={i}
-                  className="inline-block overflow-hidden"
+                  className="relative inline-block overflow-hidden"
                   style={{ lineHeight: 1 }}
                 >
                   <span
@@ -383,7 +562,10 @@ export default function Home() {
           </div>
 
           {/* ── Studio metadata — horizontal, symmetric (no vertical rotation) ── */}
-          <div className="mx-auto mt-10 flex w-full max-w-6xl flex-col items-center justify-between gap-3 px-6 sm:flex-row sm:items-center md:mt-12 md:px-12">
+          <div
+            id="studio"
+            className="mx-auto mt-10 flex w-full max-w-6xl scroll-mt-20 flex-col items-center justify-between gap-3 px-6 sm:flex-row sm:items-center md:mt-12 md:px-12"
+          >
             <div ref={metaLeftRef} className="opacity-0">
               <span className="font-[family-name:var(--font-geist-mono)] text-[9px] uppercase tracking-[0.5em] text-v-smoke">
                 Est. 2024
@@ -412,178 +594,9 @@ export default function Home() {
       {/* ═══════════════════════════════════════════════════════
           SERVICES — Horizontal scroll showcase
           ═══════════════════════════════════════════════════════ */}
-      <div id="services"><ServicesShowcase /></div>
-
-      <StudioPillars />
-
-      {/* ═══════════════════════════════════════════════════════
-          CONTENT SECTIONS
-          ═══════════════════════════════════════════════════════ */}
-      {/* ═══════════════════════════════════════════════════════
-          001 — PHILOSOPHY
-          ═══════════════════════════════════════════════════════ */}
-      <section
-        id="about"
-        ref={setSectionRef(0)}
-        className="relative px-8 py-32 md:px-16 lg:px-24"
-      >
-        <div className="mx-auto max-w-7xl">
-          {/* Full-width rule above */}
-          <div data-animate="rule" className="v-rule mb-16 md:mb-24" />
-
-          <div className="grid grid-cols-1 gap-12 md:grid-cols-[1fr_2fr] md:gap-24">
-            {/* Left — decorative number + label */}
-            <div className="flex flex-col justify-start pt-2">
-              <span
-                data-animate="heading"
-                className="block font-[family-name:var(--font-playfair)] text-[clamp(4rem,8vw,7rem)] font-normal leading-none tracking-[-0.04em] text-v-smoke/30 opacity-0 select-none"
-              >
-                001
-              </span>
-              <span
-                data-animate="heading"
-                className="mt-4 block font-[family-name:var(--font-geist-mono)] text-[9px] uppercase tracking-[0.5em] text-v-accent opacity-0"
-              >
-                Philosophy
-              </span>
-            </div>
-
-            {/* Right — content */}
-            <div>
-              <h2
-                data-animate="heading"
-                className="font-[family-name:var(--font-playfair)] text-[clamp(2.8rem,5vw,5rem)] leading-[1.05] tracking-[-0.03em] text-v-chalk opacity-0"
-              >
-                Where shadow meets
-                <br />
-                <span className="italic text-v-accent">precision</span>
-              </h2>
-              <p
-                data-animate="body"
-                className="mt-8 max-w-lg font-[family-name:var(--font-geist-mono)] text-[11px] leading-[1.9] text-v-silver opacity-0"
-              >
-                Every pixel is deliberate. Every interaction, choreographed. We
-                don&apos;t build websites — we architect immersive digital
-                environments that command attention and convert curiosity into
-                commitment.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ═══════════════════════════════════════════════════════
-          002 — CAPABILITY
-          ═══════════════════════════════════════════════════════ */}
-      <section
-        ref={setSectionRef(1)}
-        className="relative px-8 py-32 md:px-16 lg:px-24"
-      >
-        <div className="mx-auto max-w-7xl">
-          <div data-animate="rule" className="v-rule mb-16 md:mb-24" />
-
-          <div className="grid grid-cols-1 gap-12 md:grid-cols-[1fr_2fr] md:gap-24">
-            {/* Left */}
-            <div className="flex flex-col justify-start pt-2">
-              <span
-                data-animate="heading"
-                className="block font-[family-name:var(--font-playfair)] text-[clamp(4rem,8vw,7rem)] font-normal leading-none tracking-[-0.04em] text-v-smoke/30 opacity-0 select-none"
-              >
-                002
-              </span>
-              <span
-                data-animate="heading"
-                className="mt-4 block font-[family-name:var(--font-geist-mono)] text-[9px] uppercase tracking-[0.5em] text-v-accent opacity-0"
-              >
-                Capability
-              </span>
-            </div>
-
-            {/* Right */}
-            <div>
-              <h2
-                data-animate="heading"
-                className="font-[family-name:var(--font-playfair)] text-[clamp(2.8rem,5vw,5rem)] leading-[1.05] tracking-[-0.03em] text-v-chalk opacity-0"
-              >
-                Engineering at the
-                <br />
-                <span className="italic text-v-accent">bleeding edge</span>
-              </h2>
-              <p
-                data-animate="body"
-                className="mt-8 max-w-lg font-[family-name:var(--font-geist-mono)] text-[11px] leading-[1.9] text-v-silver opacity-0"
-              >
-                WebGL shaders. GPU-accelerated animations. Sub-frame scroll
-                synchronization. We leverage the full depth of the modern browser to
-                deliver experiences that feel impossible — and perform flawlessly.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ═══════════════════════════════════════════════════════
-          003 — CONTACT
-          ═══════════════════════════════════════════════════════ */}
-      <section
-        id="contact"
-        ref={setSectionRef(2)}
-        className="relative px-8 py-32 md:px-16 lg:px-24"
-      >
-        <div className="mx-auto max-w-7xl">
-          <div data-animate="rule" className="v-rule mb-16 md:mb-24" />
-
-          <div className="grid grid-cols-1 gap-12 md:grid-cols-[1fr_2fr] md:gap-24">
-            {/* Left */}
-            <div className="flex flex-col justify-start pt-2">
-              <span
-                data-animate="heading"
-                className="block font-[family-name:var(--font-playfair)] text-[clamp(4rem,8vw,7rem)] font-normal leading-none tracking-[-0.04em] text-v-smoke/30 opacity-0 select-none"
-              >
-                003
-              </span>
-              <span
-                data-animate="heading"
-                className="mt-4 block font-[family-name:var(--font-geist-mono)] text-[9px] uppercase tracking-[0.5em] text-v-accent opacity-0"
-              >
-                Contact
-              </span>
-            </div>
-
-            {/* Right */}
-            <div>
-              <h2
-                data-animate="heading"
-                className="font-[family-name:var(--font-playfair)] text-[clamp(2.8rem,5vw,5rem)] leading-[1.05] tracking-[-0.03em] text-v-chalk opacity-0"
-              >
-                Ready to
-                <br />
-                <span className="italic text-v-accent">transcend?</span>
-              </h2>
-              <p
-                data-animate="body"
-                className="mt-8 max-w-lg font-[family-name:var(--font-geist-mono)] text-[11px] leading-[1.9] text-v-silver opacity-0"
-              >
-                The line between ordinary and extraordinary is thinner than you
-                think. Let&apos;s cross it together.
-              </p>
-              <div data-animate="body" className="mt-12 opacity-0">
-                <a
-                  href="mailto:hello@volari.studio"
-                  data-cursor-magnetic
-                  data-cursor-label="Connect"
-                  className="group inline-flex items-center gap-4 border border-v-smoke/50 px-8 py-4 font-[family-name:var(--font-geist-mono)] text-[10px] uppercase tracking-[0.4em] text-v-chalk transition-all duration-500 hover:border-v-accent/60 hover:text-v-accent"
-                >
-                  Start a project
-                  <span className="transition-transform duration-500 group-hover:translate-x-1 group-hover:-translate-y-1">
-                    ↗
-                  </span>
-                </a>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
+      <div id="services" className="scroll-mt-20">
+        <ServicesShowcase />
+      </div>
 
       <SiteFooter />
     </PageTransition>

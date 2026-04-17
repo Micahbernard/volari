@@ -3,8 +3,37 @@ export const vertexShader = /* glsl */ `
   uniform float uScrollProgress;
   uniform vec2  uMouse;
   uniform vec2  uResolution;
+  // Ripples — vec4(originX, originY[0..1, y-up], startTime, strength[0|1]).
+  // 6 slots in a ring buffer; inactive slots carry strength=0.
+  uniform vec4  uRipples[6];
   varying vec2  vUv;
   varying float vElevation;
+  varying float vRipple;
+
+  // ── Ripple field — concentric damped wave, stone-in-lake ──
+  // age     : seconds since click
+  // front   : expanding ring radius in aspect-corrected uv
+  // env     : gaussian envelope around the ring front (wider → multi-crest visible)
+  // phase   : sin oscillation inside envelope, frequency tuned so ~3 rings sit in band
+  // decay   : time decay + lifetime falloff
+  float rippleField(vec2 uvPos, float aspect, float time){
+    float total = 0.0;
+    for(int i=0; i<6; i++){
+      vec4 r = uRipples[i];
+      if(r.w < 0.5) continue;
+      float age = time - r.z;
+      if(age < 0.0 || age > 3.6) continue;
+      vec2 ro = vec2((r.x - 0.5) * aspect, r.y - 0.5);
+      vec2 pr = vec2((uvPos.x - 0.5) * aspect, uvPos.y - 0.5);
+      float d = length(pr - ro);
+      float front = age * 0.40;
+      float env = exp(-pow((d - front) / 0.22, 2.0));
+      float phase = d * 42.0 - age * 11.0;
+      float decay = exp(-age * 0.75) * (1.0 - smoothstep(2.6, 3.6, age));
+      total += cos(phase) * env * decay;
+    }
+    return total;
+  }
 
   vec4 permute(vec4 x){return mod(((x*34.0)+1.0)*x,289.0);}
   vec4 taylorInvSqrt(vec4 r){return 1.79284291400159-0.85373472095314*r;}
@@ -55,15 +84,18 @@ export const vertexShader = /* glsl */ `
   void main(){
     vUv=uv;
     float scroll=uScrollProgress;
-    float scScroll=scroll;
     float tBase=uTime*0.036;
     float tRipple=uTime*0.054;
     vec3 pos=position;
-    float n1=snoise(vec3(pos.xy*0.5,tBase+scScroll*0.45))*0.16;
-    float n2=snoise(vec3(pos.xy*1.6,tRipple*1.25+scScroll*0.28))*0.05;
+    float n1=snoise(vec3(pos.xy*0.5,tBase+scroll*0.45))*0.16;
+    float n2=snoise(vec3(pos.xy*1.6,tRipple*1.25+scroll*0.28))*0.05;
     vec2 mouse=(uMouse-0.5)*2.0;
     float mouseDist=length(pos.xy-mouse);
     float mousePush=smoothstep(1.4,0.0,mouseDist)*0.10;
+
+    float aspect=uResolution.x/max(uResolution.y,1.0);
+    float rip=rippleField(uv,aspect,uTime);
+    vRipple=rip;
 
     float elevation=n1+n2+mousePush;
     pos.z+=elevation;
@@ -78,8 +110,10 @@ export const fragmentShader = /* glsl */ `
   uniform vec2  uMouse;
   uniform float uScrollProgress;
   uniform vec2  uResolution;
+  uniform vec4  uRipples[6];
   varying vec2  vUv;
   varying float vElevation;
+  varying float vRipple;
 
   vec4 permute(vec4 x){return mod(((x*34.0)+1.0)*x,289.0);}
   vec4 taylorInvSqrt(vec4 r){return 1.79284291400159-0.85373472095314*r;}
@@ -196,6 +230,29 @@ export const fragmentShader = /* glsl */ `
     col+=l2*wake*0.35;
     col+=l3*wake*0.20;
     col+=l4*wake*0.08;
+
+    // ── Ripple tint — crests carry cool silver moonlight, troughs deepen shadow.
+    // Impact core adds soft dim glow at click point that fades fastest.
+    // Sits atop existing shadow palette — dim, not washy. Luxury restraint.
+    float crestRip=max(vRipple,0.0);
+    float troughRip=max(-vRipple,0.0);
+    vec3 moonTint=vec3(0.62,0.70,0.86);
+    col+=moonTint*crestRip*0.32;
+    col+=l4*crestRip*0.10;
+    col-=l1*troughRip*0.14;
+
+    // Soft inner glow at every active impact point.
+    float coreGlow=0.0;
+    for(int i=0;i<6;i++){
+      vec4 rr=uRipples[i];
+      if(rr.w<0.5) continue;
+      float age=uTime-rr.z;
+      if(age<0.0||age>3.6) continue;
+      vec2 ro=vec2((rr.x-0.5)*aspect,rr.y-0.5);
+      float d=length(p-ro);
+      coreGlow+=exp(-pow(d/0.11,2.0))*exp(-age*1.8);
+    }
+    col+=moonTint*coreGlow*0.16;
 
     float vig=1.0-smoothstep(0.06,0.98,length(p*0.78));
     col*=pow(vig,1.24);
