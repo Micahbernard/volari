@@ -65,6 +65,7 @@ export default function CustomCursor() {
     let lastX = 0;
     let lastY = 0;
     let lastT = performance.now();
+    let primed = false; // skip velocity calc on the very first move
     let vx = 0; // smoothed velocity x  (px/ms)
     let vy = 0; // smoothed velocity y
     let hoverLocked = false;
@@ -79,14 +80,18 @@ export default function CustomCursor() {
     // ── Mouse move: update positions + velocity ──
     const onMouseMove = (e: MouseEvent) => {
       const now = performance.now();
-      const dt = Math.max(1, now - lastT);
-      const dx = e.clientX - lastX;
-      const dy = e.clientY - lastY;
 
-      // Exponential smoothing — responsive but not jittery
-      const alpha = 0.25;
-      vx = vx * (1 - alpha) + (dx / dt) * alpha;
-      vy = vy * (1 - alpha) + (dy / dt) * alpha;
+      if (primed) {
+        const dt = Math.max(1, now - lastT);
+        const dx = e.clientX - lastX;
+        const dy = e.clientY - lastY;
+        // Exponential smoothing — responsive but not jittery
+        const alpha = 0.25;
+        vx = vx * (1 - alpha) + (dx / dt) * alpha;
+        vy = vy * (1 - alpha) + (dy / dt) * alpha;
+      } else {
+        primed = true;
+      }
 
       lastX = e.clientX;
       lastY = e.clientY;
@@ -275,19 +280,30 @@ export default function CustomCursor() {
     };
   }, [setup]);
 
-  // ── Veil background: tight silver core fading to transparent.
+  // ── Veil background: tight core fading to transparent.
   //    At idle the veils stack concentrically (radial symmetry); under
   //    motion the rAF scaleX stretches the same gradient into an ellipse,
   //    producing the tail without a per-frame canvas draw.
+  //
+  //    Colors come from --cursor-veil-* CSS vars so the void→day swap is
+  //    automatic (silver on dark, warm umber on cream). Per-layer alpha
+  //    is applied via color-mix with transparent so one set of vars can
+  //    serve all three veils at different brightnesses.
   const veilBg = (coreAlpha: number) =>
-    `radial-gradient(closest-side, rgba(232, 232, 232, ${coreAlpha}) 0%, rgba(207, 216, 226, ${coreAlpha * 0.5}) 38%, rgba(180, 192, 206, 0) 72%)`;
+    `radial-gradient(closest-side, ` +
+    `color-mix(in srgb, var(--cursor-veil-core) ${coreAlpha * 100}%, transparent) 0%, ` +
+    `color-mix(in srgb, var(--cursor-veil-mid) ${coreAlpha * 50}%, transparent) 38%, ` +
+    `var(--cursor-veil-edge) 72%)`;
 
   return (
     <>
       {/* ── Veil 3 (far) — widest, faintest, longest trail ── */}
+      {/* `cursor-veil` class supplies `mix-blend-mode: var(--cursor-veil-blend)`
+          from globals.css — screen on void, multiply on day. Lives in CSS
+          because React CSSProperties types reject var() for mix-blend-mode. */}
       <div
         ref={veil3Ref}
-        className="pointer-events-none fixed top-0 left-0 z-[9998] hidden md:block"
+        className="cursor-veil pointer-events-none fixed top-0 left-0 z-[9998] hidden md:block"
         style={{
           width: 80,
           height: 80,
@@ -295,7 +311,6 @@ export default function CustomCursor() {
           marginTop: -40,
           borderRadius: "50%",
           background: veilBg(0.22),
-          mixBlendMode: "screen",
           filter: "blur(6px)",
           willChange: "transform, opacity",
           opacity: 0,
@@ -306,7 +321,7 @@ export default function CustomCursor() {
       {/* ── Veil 2 (mid) ── */}
       <div
         ref={veil2Ref}
-        className="pointer-events-none fixed top-0 left-0 z-[9999] hidden md:block"
+        className="cursor-veil pointer-events-none fixed top-0 left-0 z-[9999] hidden md:block"
         style={{
           width: 56,
           height: 56,
@@ -314,7 +329,6 @@ export default function CustomCursor() {
           marginTop: -28,
           borderRadius: "50%",
           background: veilBg(0.32),
-          mixBlendMode: "screen",
           filter: "blur(3px)",
           willChange: "transform, opacity",
           opacity: 0,
@@ -325,7 +339,7 @@ export default function CustomCursor() {
       {/* ── Veil 1 (near) — brightest, closest ── */}
       <div
         ref={veil1Ref}
-        className="pointer-events-none fixed top-0 left-0 z-[9999] hidden md:block"
+        className="cursor-veil pointer-events-none fixed top-0 left-0 z-[9999] hidden md:block"
         style={{
           width: 36,
           height: 36,
@@ -333,7 +347,6 @@ export default function CustomCursor() {
           marginTop: -18,
           borderRadius: "50%",
           background: veilBg(0.5),
-          mixBlendMode: "screen",
           filter: "blur(1.5px)",
           willChange: "transform, opacity",
           opacity: 0,
@@ -341,7 +354,8 @@ export default function CustomCursor() {
         aria-hidden="true"
       />
 
-      {/* ── Hairline chalk ring — hidden at rest; coalesces on hover ── */}
+      {/* ── Hairline ring — hidden at rest; coalesces on hover.
+          Chalk on void / deep-amber on day via --cursor-ring-* vars. ── */}
       <div
         ref={ringRef}
         className="pointer-events-none fixed top-0 left-0 z-[10000] hidden md:block"
@@ -351,8 +365,8 @@ export default function CustomCursor() {
           marginLeft: -22,
           marginTop: -22,
           borderRadius: "50%",
-          border: "1px solid rgba(232, 232, 232, 0.65)",
-          boxShadow: "0 0 14px rgba(207, 216, 226, 0.22)",
+          border: "1px solid var(--cursor-ring-line)",
+          boxShadow: "0 0 14px var(--cursor-ring-shadow)",
           willChange: "transform, opacity",
           opacity: 0,
         }}

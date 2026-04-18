@@ -400,7 +400,7 @@ export default function WorkShowcase() {
               key={project.id}
               ref={setCardRef(i)}
               data-cursor-label="View"
-              className="relative flex h-[70vh] w-[clamp(320px,60vw,680px)] shrink-0 flex-col overflow-hidden rounded-sm opacity-0 ring-1 ring-transparent transition-[box-shadow,ring-color] duration-500 max-md:w-[90vw] max-md:snap-center hover:shadow-[0_0_48px_-14px_rgba(255,255,255,0.06)] hover:ring-v-smoke/25"
+              className="relative flex h-[70vh] w-[clamp(320px,60vw,680px)] shrink-0 flex-col overflow-hidden rounded-sm opacity-0 ring-1 ring-transparent transition-[box-shadow,ring-color] duration-500 max-md:w-[90vw] max-md:snap-center hover:shadow-[0_0_48px_-14px_var(--card-hover-glow)] hover:ring-v-smoke/25"
             >
               {/* ════════════════════════════════════════
                   VISUAL AREA — top 65%
@@ -455,7 +455,7 @@ export default function WorkShowcase() {
                   style={{ willChange: "transform" }}
                 >
                   {/* Edge vignette */}
-                  <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_50%,transparent_30%,rgba(0,0,0,0.4)_100%)]" />
+                  <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_50%,transparent_30%,var(--card-inner-vignette)_100%)]" />
 
                   {/* Accent glow — faint radial from project color */}
                   <div
@@ -479,7 +479,7 @@ export default function WorkShowcase() {
                 className="flex flex-1 flex-col p-6"
                 style={{
                   backgroundColor: "var(--v-charcoal)",
-                  borderTop: "1px solid rgba(255,255,255,0.06)",
+                  borderTop: "1px solid var(--card-panel-border)",
                 }}
               >
                 {/* ID + Year row */}

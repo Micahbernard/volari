@@ -4,6 +4,11 @@ import { useRef, useMemo, useEffect, useCallback } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import { vertexShader, fragmentShader } from "@/shaders/fluidBackground";
+import {
+  registerShaderFlip,
+  type Theme,
+  FLIP_DURATION_MS,
+} from "@/providers/ThemeProvider";
 
 // ─────────────────────────────────────────────────────────────
 // Performance constants
@@ -15,6 +20,53 @@ const PLANE_SEGMENTS = 160;
 // Ripple ring buffer — must match `uniform vec4 uRipples[6]` in shader.
 const RIPPLE_COUNT = 6;
 const RIPPLE_LIFETIME = 3.6; // seconds, matches shader guard
+
+// Theme flip: per-frame exponential lerp rate for uFlip.
+// ~0.035 at 60fps crosses 0↔1 in roughly the same ~1.5s window as
+// the CSS transition in body.theme-flipping, so DOM + shader land together.
+const FLIP_LERP = 0.035;
+
+/** Parse resolved CSS length (--flip-ox/oy) to px for current viewport. */
+function parseCssLengthToPx(
+  s: string,
+  viewportW: number,
+  viewportH: number,
+  remPx: number
+): number {
+  const t = s.trim();
+  const px = t.match(/^([-\d.]+)px$/);
+  if (px) return parseFloat(px[1]);
+  const vw = t.match(/^([-\d.]+)vw$/);
+  if (vw) return (parseFloat(vw[1]) / 100) * viewportW;
+  const vh = t.match(/^([-\d.]+)vh$/);
+  if (vh) return (parseFloat(vh[1]) / 100) * viewportH;
+  const rem = t.match(/^([-\d.]+)rem$/);
+  if (rem) return parseFloat(rem[1]) * remPx;
+  const n = parseFloat(t);
+  return Number.isFinite(n) ? n : 0;
+}
+
+/** Read :root --flip-ox/--flip-oy into shader UV (bottom-up Y, matches uMouse). */
+function stampTransitionOriginFromCss(target: THREE.Vector2) {
+  const root = document.documentElement;
+  const cs = getComputedStyle(root);
+  const oxStr = cs.getPropertyValue("--flip-ox").trim();
+  const oyStr = cs.getPropertyValue("--flip-oy").trim();
+  const w = Math.max(window.innerWidth, 1);
+  const h = Math.max(window.innerHeight, 1);
+  const remPx = parseFloat(cs.fontSize) || 16;
+  const ox = parseCssLengthToPx(oxStr || "50vw", w, h, remPx);
+  const oy = parseCssLengthToPx(oyStr || "5.5rem", w, h, remPx);
+  target.set(ox / w, 1.0 - oy / h);
+}
+
+/** Read the theme attribute set by the pre-hydration script (layout.tsx). */
+function readInitialFlip(): number {
+  if (typeof document === "undefined") return 0;
+  return document.documentElement.getAttribute("data-theme") === "day"
+    ? 1
+    : 0;
+}
 
 // ─────────────────────────────────────────────────────────────
 // FluidPlane — 128×128 segmented mesh with vertex displacement
@@ -42,6 +94,16 @@ function FluidPlane() {
   const shaderTime = useRef(0);
   // Next slot in the ripple ring buffer — overwrites oldest click.
   const rippleSlot = useRef(0);
+  // Theme flip target (0 = void, 1 = day). uFlip lerps toward this
+  // each frame. Initialized from the DOM so SSR + pre-hydration script
+  // agree with the first shader frame.
+  const flipTarget = useRef<number>(readInitialFlip());
+  /** Bell-shaped warp over FLIP_DURATION_MS (View Transitions snap uFlip; this stays time-based). */
+  const transitionWarp = useRef<{ startMs: number | null; dir: number }>({
+    startMs: null,
+    dir: 1,
+  });
+  const prefersReducedMotion = useRef(false);
 
   // Shader uniforms — created once, mutated per-frame
   const uniforms = useMemo(() => {
@@ -50,6 +112,7 @@ function FluidPlane() {
       // z = -1000 keeps age huge so inactive slots stay dead even if w check fails
       () => new THREE.Vector4(0, 0, -1000, 0)
     );
+    const initialFlip = readInitialFlip();
     return {
       uTime: { value: 0 },
       uMouse: { value: new THREE.Vector2(0.5, 0.5) },
@@ -61,6 +124,12 @@ function FluidPlane() {
         ),
       },
       uRipples: { value: ripples },
+      // uFlip: 0.0 = void palette, 1.0 = day palette. Shader mixes
+      // between two constant palettes using this scalar.
+      uFlip: { value: initialFlip },
+      uTransitionWarp: { value: 0 },
+      uTransitionDir: { value: 1 },
+      uTransitionOrigin: { value: new THREE.Vector2(0.5, 0.88) },
     };
   }, []);
 
@@ -118,13 +187,49 @@ function FluidPlane() {
   useEffect(() => {
     const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
     const apply = () => {
-      motionTimeScale.current = mq.matches
+      const reduced = mq.matches;
+      prefersReducedMotion.current = reduced;
+      motionTimeScale.current = reduced
         ? REDUCED_MOTION_TIME_SCALE
         : FULL_MOTION_TIME_SCALE;
     };
     apply();
     mq.addEventListener("change", apply);
     return () => mq.removeEventListener("change", apply);
+  }, []);
+
+  // ── Shader theme bridge ──
+  // ThemeProvider invokes this callback with the new theme when the
+  // crest is pressed. Update flipTarget; the per-frame loop lerps
+  // uFlip toward it, so the shader crossfade is frame-locked to the
+  // CSS transition window.
+  //
+  // `instant` is set by the View Transitions path: the browser snapshots
+  // <html> at the end of the update callback, and that snapshot freezes
+  // whatever uFlip is at that instant. If we only update flipTarget, the
+  // snapshot captures uFlip ≈ old-value (lerp hasn't run yet) and the
+  // horizon-rise reveal exposes a frozen pre-flip shader. Snapping uFlip
+  // to the target directly makes the snapshot honest.
+  useEffect(() => {
+    const unregister = registerShaderFlip(
+      (target: Theme, instant?: boolean) => {
+        const targetValue = target === "day" ? 1 : 0;
+        flipTarget.current = targetValue;
+        transitionWarp.current = {
+          startMs: performance.now(),
+          dir: target === "day" ? 1 : -1,
+        };
+        if (materialRef.current) {
+          stampTransitionOriginFromCss(
+            materialRef.current.uniforms.uTransitionOrigin.value as THREE.Vector2
+          );
+        }
+        if (instant && materialRef.current) {
+          materialRef.current.uniforms.uFlip.value = targetValue;
+        }
+      }
+    );
+    return unregister;
   }, []);
 
   // ── Per-frame uniform updates ──
@@ -146,6 +251,30 @@ function FluidPlane() {
       mouseCurrent.current.x,
       mouseCurrent.current.y
     );
+
+    // Theme crossfade — exponential lerp toward flipTarget.
+    // Snap once |delta| drops below 1e-3 so uFlip actually reaches
+    // 0 or 1 (prevents asymptotic ~0.001 residue in the shader mix).
+    const flipCurrent = mat.uniforms.uFlip.value as number;
+    const flipNext = flipCurrent + (flipTarget.current - flipCurrent) * FLIP_LERP;
+    mat.uniforms.uFlip.value =
+      Math.abs(flipTarget.current - flipNext) < 1e-3
+        ? flipTarget.current
+        : flipNext;
+
+    let warp = 0;
+    const tw = transitionWarp.current;
+    if (tw.startMs !== null && !prefersReducedMotion.current) {
+      const elapsed = performance.now() - tw.startMs;
+      if (elapsed >= FLIP_DURATION_MS) {
+        tw.startMs = null;
+      } else {
+        const u = elapsed / FLIP_DURATION_MS;
+        warp = Math.sin(u * Math.PI);
+      }
+    }
+    mat.uniforms.uTransitionWarp.value = warp;
+    mat.uniforms.uTransitionDir.value = tw.startMs !== null ? tw.dir : 1;
 
     // Retire expired ripples so the shader loop skips them cheaply.
     const ripples = mat.uniforms.uRipples.value as THREE.Vector4[];
@@ -203,7 +332,10 @@ export default function WebGLBackground() {
         }}
         frameloop="always"
         flat
-        style={{ background: "#050505" }}
+        // Canvas paints opaque every frame (alpha:false), so this bg is
+        // a pre-init fallback. Use the themed var so cold-start matches
+        // whichever theme the pre-hydration script chose.
+        style={{ background: "var(--v-black)" }}
       >
         <FluidPlane />
       </Canvas>

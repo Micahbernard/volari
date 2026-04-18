@@ -13,6 +13,7 @@
 
 /* ── Theme Tokens ── */
 :root {
+  /* Base palette — swapped wholesale by [data-theme="day"] below */
   --v-black: #050505;
   --v-void: #0a0a0a;
   --v-charcoal: #111111;
@@ -30,6 +31,76 @@
   --foreground: var(--v-chalk);
   --muted: var(--v-silver);
 
+  /* ── Specialized tokens ──
+     Values currently hardcoded throughout the app. Declared here as the
+     single source of truth so [data-theme="day"] can swap the whole
+     surface of the site, not just the --v-* scale.
+     Step 1: definitions only. Step 2+ migrates call sites to var(...). */
+
+  /* Hero "VOLARI" — 9-stop steel gradient (void) / warm brass (day) */
+  --hero-metal-0: #060708;
+  --hero-metal-1: #12161d;
+  --hero-metal-2: #283038;
+  --hero-metal-3: #4f5c6a;
+  --hero-metal-4: #8b9bab;
+  --hero-metal-5: #cfd8e2;
+  --hero-metal-6: #8e9dad;
+  --hero-metal-7: #3d4752;
+  --hero-metal-8: #0c0e12;
+
+  /* Hero bokeh — two radial blobs behind the letterform */
+  --hero-bokeh-warm: rgba(255, 255, 255, 0.26);
+  --hero-bokeh-cool: rgba(185, 200, 215, 0.10);
+  --hero-bokeh-pale: rgba(220, 232, 242, 0.16);
+  --hero-bokeh-deep: rgba(100, 118, 138, 0.05);
+
+  /* Hero specular — cursor-steered light blade traveling across the metal */
+  --hero-specular-ghost:  rgba(255, 255, 255, 0.35);
+  --hero-specular-bright: rgba(255, 255, 255, 1.00);
+  --hero-specular-blue:   rgba(248, 252, 255, 0.95);
+  --hero-specular-dim:    rgba(190, 205, 218, 0.45);
+
+  /* Hero halo — ambient glow behind the heading (dark on void, warm on day) */
+  --hero-halo-inner: rgba(0, 0, 0, 0.55);
+  --hero-halo-outer: rgba(0, 0, 0, 0.30);
+
+  /* Comet-veil cursor — 3 silver wisps on dark; warm umber dust on cream */
+  --cursor-veil-core:   rgba(232, 232, 232, 1);
+  --cursor-veil-mid:    rgba(207, 216, 226, 1);
+  --cursor-veil-edge:   rgba(180, 192, 206, 0);
+  --cursor-veil-blend:  screen;
+  --cursor-ring-line:   rgba(232, 232, 232, 0.65);
+  --cursor-ring-shadow: rgba(207, 216, 226, 0.22);
+
+  /* Accent glow — gold at 35% / 18% alpha, used by navbar V halo + decanter */
+  --accent-glow-strong: rgba(212, 168, 83, 0.35);
+  --accent-glow-soft:   rgba(212, 168, 83, 0.18);
+
+  /* Decanter — deep-gold floor of the liquid fill */
+  --decanter-bottom: #b88f3f;
+
+  /* Navbar scrolled state — translucent void / translucent cream */
+  --nav-scrolled-bg: rgba(5, 5, 5, 0.70);
+
+  /* Chalk dot halo — small bg-v-chalk orb that rests on decanter meniscus */
+  --chalk-dot-halo:       rgba(255, 255, 255, 0.35);
+  --chalk-dot-halo-hover: rgba(232, 232, 232, 0.55);
+
+  /* Showcase card chrome — neutral tints that flip with theme */
+  --card-hover-glow:    rgba(255, 255, 255, 0.055);
+  --card-inner-shade-a: rgba(42, 42, 42, 0.30);
+  --card-inner-shade-b: rgba(26, 26, 26, 0.40);
+  --card-inner-vignette: rgba(0, 0, 0, 0.40);
+  --card-panel-border:   rgba(255, 255, 255, 0.06);
+
+  /* Studio pillar bokeh — one per card (gold, cool silver, chalk) */
+  --pillar-bokeh-gold:   rgba(212, 175, 55, 0.14);
+  --pillar-bokeh-silver: rgba(148, 163, 184, 0.12);
+  --pillar-bokeh-chalk:  rgba(255, 255, 255, 0.06);
+
+  /* Film grain — denser on cream (noise reads heavier on light) */
+  --grain-opacity: 0.035;
+
   /* Easing curves */
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
@@ -37,6 +108,97 @@
 
   /* Layout */
   --header-height: 5.5rem;
+}
+
+/* ─────────────────────────────────────────────
+   DAYBREAK — Substance palette
+   Same semantic roles, inverted value scale.
+   --v-black is no longer black; it is the deepest
+   BACKGROUND layer (warm cream). --v-chalk is no
+   longer chalk; it is primary INK. Gold brightens
+   slightly (#e0b45c) so the through-line metal
+   reads clean on cream without going muddy.
+   Hero steel becomes warm brass. Cursor veils
+   become amber dust (multiply blend, dark on light).
+   ───────────────────────────────────────────── */
+:root[data-theme="day"] {
+  /* Base palette — every --v-* inverts its semantic role */
+  --v-black: #f2ece1;
+  --v-void: #ede6d8;
+  --v-charcoal: #e0d6c4;
+  --v-ash: #cfc3ad;
+  --v-smoke: #a89d86;
+  --v-silver: #7a6f5c;
+  --v-bone: #3e3a30;
+  --v-chalk: #1a1712;
+  --v-white: #0a0806;
+  --v-accent: #e0b45c;
+  --v-accent-dim: #b08a40;
+
+  /* Hero — warm brass stops instead of cool steel */
+  --hero-metal-0: #231408;
+  --hero-metal-1: #3d2813;
+  --hero-metal-2: #5a3f1e;
+  --hero-metal-3: #8a6334;
+  --hero-metal-4: #b89359;
+  --hero-metal-5: #ead7a8;
+  --hero-metal-6: #b2854a;
+  --hero-metal-7: #6f4f26;
+  --hero-metal-8: #2a180a;
+
+  /* Hero bokeh — warm cream instead of cool silver */
+  --hero-bokeh-warm: rgba(255, 248, 224, 0.28);
+  --hero-bokeh-cool: rgba(228, 208, 176, 0.10);
+  --hero-bokeh-pale: rgba(255, 240, 216, 0.18);
+  --hero-bokeh-deep: rgba(130, 100, 60, 0.06);
+
+  /* Hero specular — warmed highlights (champagne instead of blue-white) */
+  --hero-specular-ghost:  rgba(255, 250, 235, 0.35);
+  --hero-specular-bright: rgba(255, 248, 228, 1.00);
+  --hero-specular-blue:   rgba(252, 246, 232, 0.95);
+  --hero-specular-dim:    rgba(220, 200, 160, 0.45);
+
+  /* Hero halo — subtle warm glow instead of dark shadow (dark shadow
+     reads as soot on cream; replaced with a gentle amber bloom) */
+  --hero-halo-inner: rgba(180, 140, 80, 0.25);
+  --hero-halo-outer: rgba(180, 140, 80, 0.15);
+
+  /* Comet veil — amber dust motes; multiply blend so dark-on-light works */
+  --cursor-veil-core:   rgba(80, 55, 25, 1);
+  --cursor-veil-mid:    rgba(110, 80, 40, 1);
+  --cursor-veil-edge:   rgba(140, 105, 60, 0);
+  --cursor-veil-blend:  multiply;
+  --cursor-ring-line:   rgba(80, 55, 25, 0.55);
+  --cursor-ring-shadow: rgba(180, 140, 80, 0.22);
+
+  /* Accent glow tuned to brightened day gold */
+  --accent-glow-strong: rgba(224, 180, 92, 0.40);
+  --accent-glow-soft:   rgba(224, 180, 92, 0.22);
+
+  /* Decanter — deeper gold floor reads on cream */
+  --decanter-bottom: #9c7020;
+
+  /* Navbar scrolled — translucent cream */
+  --nav-scrolled-bg: rgba(242, 236, 225, 0.72);
+
+  /* Chalk dot halo — on cream the "dot" is ink, needs warm amber halo */
+  --chalk-dot-halo:       rgba(180, 140, 80, 0.35);
+  --chalk-dot-halo-hover: rgba(180, 140, 80, 0.55);
+
+  /* Showcase card chrome — warmed counterparts; inner shades become cream */
+  --card-hover-glow:    rgba(26, 23, 18, 0.08);
+  --card-inner-shade-a: rgba(168, 157, 134, 0.28);
+  --card-inner-shade-b: rgba(138, 124, 98, 0.35);
+  --card-inner-vignette: rgba(60, 40, 15, 0.28);
+  --card-panel-border:   rgba(26, 23, 18, 0.10);
+
+  /* Studio pillar bokeh — brighter gold, warm sand, dark pen on cream */
+  --pillar-bokeh-gold:   rgba(224, 180, 92, 0.20);
+  --pillar-bokeh-silver: rgba(168, 152, 120, 0.16);
+  --pillar-bokeh-chalk:  rgba(26, 23, 18, 0.08);
+
+  /* Grain — heavier on cream (light grounds show noise more prominently) */
+  --grain-opacity: 0.055;
 }
 
 /* ── Tailwind v4 Theme Extension ── */
@@ -117,7 +279,7 @@ body::after {
   inset: 0;
   z-index: 9999;
   pointer-events: none;
-  opacity: 0.035;
+  opacity: var(--grain-opacity);
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
   background-repeat: repeat;
   background-size: 256px 256px;
@@ -192,9 +354,157 @@ body::after {
 
 /* ── Navbar scroll state ── */
 .nav-scrolled {
-  background-color: rgba(5, 5, 5, 0.7);
+  background-color: var(--nav-scrolled-bg);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
+}
+
+/* ── Theme flip: fallback crossfade ──
+   Only engaged on browsers without the View Transitions API (older Safari,
+   some sandboxed iframes). The ~1.5s window after the crest is pressed
+   gets `body.theme-flipping`, which scopes a property-specific transition
+   across every element and pseudo. Removed on timeout so the site reverts
+   to instant-response rendering (no perma-laggy hover states). Scoped
+   selectors cover pseudo-elements because body::after (grain) and
+   nav::before variants need to flip too.
+
+   Browsers WITH startViewTransition skip this path entirely — they get
+   the crest radial animation below instead. */
+body.theme-flipping,
+body.theme-flipping *,
+body.theme-flipping *::before,
+body.theme-flipping *::after {
+  transition:
+    background-color 1.5s var(--ease-out-expo),
+    color 1.5s var(--ease-out-expo),
+    border-color 1.5s var(--ease-out-expo),
+    fill 1.5s var(--ease-out-expo),
+    stroke 1.5s var(--ease-out-expo),
+    box-shadow 1.5s var(--ease-out-expo),
+    opacity 1.5s var(--ease-out-expo),
+    filter 1.5s var(--ease-out-expo);
+}
+
+/* ═════════════════════════════════════════════════════════════════════
+   Theme flip via View Transitions API — crest radial
+
+   Snapshots ::view-transition-old(root) / ::view-transition-new(root).
+   ThemeProvider sets --flip-ox / --flip-oy from the crest button centre.
+
+   RISE (void → day) — sunlight expands from the crest; bright at first,
+        then settles as the circle reaches the edges.
+   SET  (day → void) — shadow / void expands from the crest, consuming light.
+   ═════════════════════════════════════════════════════════════════════ */
+
+/* ── Default shared envelope (applies to both directions) ── */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-fill-mode: both;
+  mix-blend-mode: normal;
+}
+
+/* ── RISE — void → day — sunlight from crest ── */
+:root[data-flip-direction="rise"]::view-transition-old(root) {
+  animation:
+    crest-hold 1.5s var(--ease-out-expo) both,
+    dawn-warm-old 1.5s var(--ease-out-expo) both;
+}
+:root[data-flip-direction="rise"]::view-transition-new(root) {
+  animation: crest-sunrise 1.5s var(--ease-out-expo) both;
+}
+
+/* ── SET — day → void — void / shadow from crest ── */
+:root[data-flip-direction="set"]::view-transition-old(root) {
+  animation: crest-hold 1.5s var(--ease-out-expo) both;
+}
+:root[data-flip-direction="set"]::view-transition-new(root) {
+  animation: crest-void-consume 1.5s var(--ease-out-expo) both;
+}
+
+@keyframes crest-hold {
+  from,
+  to {
+    opacity: 1;
+  }
+}
+
+/* New (day) reveals as a growing circle; strong bloom early, softens as it settles */
+@keyframes crest-sunrise {
+  0% {
+    clip-path: circle(0px at var(--flip-ox) var(--flip-oy));
+    filter: brightness(1.45) saturate(1.14) contrast(1.02);
+  }
+  38% {
+    filter: brightness(1.14) saturate(1.06);
+  }
+  100% {
+    clip-path: circle(150vmax at var(--flip-ox) var(--flip-oy));
+    filter: brightness(1) saturate(1) contrast(1);
+  }
+}
+
+/* New (void) eats outward; heavy mid-flip, then neutral once full */
+@keyframes crest-void-consume {
+  0% {
+    clip-path: circle(0px at var(--flip-ox) var(--flip-oy));
+    filter: brightness(0.5) saturate(0.68) hue-rotate(-14deg);
+    box-shadow: inset 0 0 220px rgba(0, 0, 0, 0.72);
+  }
+  42% {
+    filter: brightness(0.78) saturate(0.82) hue-rotate(-7deg);
+    box-shadow: inset 0 0 130px rgba(0, 0, 0, 0.48);
+  }
+  100% {
+    clip-path: circle(150vmax at var(--flip-ox) var(--flip-oy));
+    filter: brightness(1) saturate(1) hue-rotate(0deg);
+    box-shadow: inset 0 0 0 rgba(0, 0, 0, 0);
+  }
+}
+
+/* Asymmetric colour pass — peaks ~mid-transition (~0.38–0.45), returns to neutral */
+@keyframes dawn-warm-old {
+  0%,
+  100% {
+    filter: brightness(1) sepia(0) saturate(1);
+  }
+  38% {
+    filter: brightness(1.08) sepia(0.18) saturate(1.08);
+  }
+}
+
+@keyframes nightfall-new-mood {
+  0%,
+  100% {
+    filter: brightness(1) saturate(1) hue-rotate(0deg);
+    box-shadow: inset 0 0 0 rgba(0, 0, 0, 0);
+  }
+  42% {
+    filter: brightness(0.9) saturate(0.88) hue-rotate(-8deg);
+    box-shadow: inset 0 0 120px rgba(0, 0, 0, 0.34);
+  }
+}
+
+/* Fallback (no View Transitions): same dawn / nightfall intent on the live document */
+:root[data-flip-direction="rise"] body.theme-flipping {
+  filter: brightness(1.03) sepia(0.07);
+}
+:root[data-flip-direction="set"] body.theme-flipping {
+  filter: brightness(0.97) saturate(0.94) hue-rotate(-4deg);
+  box-shadow: inset 0 0 90px rgba(0, 0, 0, 0.18);
+}
+
+/* ── Reduced motion ── */
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation-duration: 0.001s !important;
+  }
+
+  :root[data-flip-direction="rise"] body.theme-flipping,
+  :root[data-flip-direction="set"] body.theme-flipping {
+    filter: none !important;
+    box-shadow: none !important;
+  }
 }
 
 /* ── Hide native cursor on desktop when custom cursor is active ── */
@@ -214,9 +524,9 @@ body::after {
 /* ── Hero "VOLARI" — glitter + bokeh + specular (inspired by macro silver, tuned to Volari dark UI) ── */
 /* SVG: fine fractal noise → sparkle grain on letters */
 .hero-volari-heading {
-  /* Neutral void halo — emphasis stays on clipped letter treatment, not colored bloom */
-  filter: drop-shadow(0 0 22px rgba(0, 0, 0, 0.55))
-    drop-shadow(0 0 52px rgba(0, 0, 0, 0.3));
+  /* Neutral halo — void/day swap via --hero-halo-*; emphasis on letter, not bloom */
+  filter: drop-shadow(0 0 22px var(--hero-halo-inner))
+    drop-shadow(0 0 52px var(--hero-halo-outer));
 }
 
 .hero-volari-letter {
@@ -227,38 +537,38 @@ body::after {
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='72' height='72'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.92' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)' opacity='0.42'/%3E%3C/svg%3E"),
     radial-gradient(
       ellipse 100% 70% at 50% 48%,
-      rgba(255, 255, 255, 0.26) 0%,
-      rgba(185, 200, 215, 0.1) 30%,
+      var(--hero-bokeh-warm) 0%,
+      var(--hero-bokeh-cool) 30%,
       transparent 58%
     ),
     radial-gradient(
       ellipse 85% 60% at 50% 52%,
-      rgba(220, 232, 242, 0.16) 0%,
-      rgba(100, 118, 138, 0.05) 40%,
+      var(--hero-bokeh-pale) 0%,
+      var(--hero-bokeh-deep) 40%,
       transparent 62%
     ),
     linear-gradient(
       102deg,
       transparent 0%,
       transparent 36%,
-      rgba(255, 255, 255, 0.35) 43%,
-      rgba(255, 255, 255, 1) 49%,
-      rgba(248, 252, 255, 0.95) 51%,
-      rgba(190, 205, 218, 0.45) 58%,
+      var(--hero-specular-ghost) 43%,
+      var(--hero-specular-bright) 49%,
+      var(--hero-specular-blue) 51%,
+      var(--hero-specular-dim) 58%,
       transparent 64%,
       transparent 100%
     ),
     linear-gradient(
       93deg,
-      #060708 0%,
-      #12161d 9%,
-      #283038 22%,
-      #4f5c6a 36%,
-      #8b9bab 44%,
-      #cfd8e2 51%,
-      #8e9dad 58%,
-      #3d4752 74%,
-      #0c0e12 100%
+      var(--hero-metal-0) 0%,
+      var(--hero-metal-1) 9%,
+      var(--hero-metal-2) 22%,
+      var(--hero-metal-3) 36%,
+      var(--hero-metal-4) 44%,
+      var(--hero-metal-5) 51%,
+      var(--hero-metal-6) 58%,
+      var(--hero-metal-7) 74%,
+      var(--hero-metal-8) 100%
     );
   background-size:
     72px 72px,
@@ -277,8 +587,9 @@ body::after {
   background-blend-mode: overlay, lighten, lighten, normal, normal;
   background-clip: text;
   -webkit-background-clip: text;
-  /* Ambient drift + specular alignment driven by JS rAF (see page.tsx)
-     so the specular blade can steer toward the cursor in real time. */
+  /* Specular + bokeh drift via the hero-volari-glitter-metal keyframes
+     below. Animation is pure CSS — no JS rAF steering — so the shimmer
+     reads the same on every render without React re-render cost. */
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -321,6 +632,14 @@ body::after {
 .cursor-ring {
   background-color: transparent !important;
   border: 3px solid white;
+}
+
+/* ── Comet veil blend mode ──
+   Lives here (not inline in CustomCursor.tsx) because React's CSSProperties
+   type refuses var() for mix-blend-mode. Swaps screen→multiply on [data-theme="day"]
+   so silver glow on dark becomes umber shadow on cream automatically. */
+.cursor-veil {
+  mix-blend-mode: var(--cursor-veil-blend);
 }
 
 /* ── Navbar decanter (liquid fill menu button) ── */

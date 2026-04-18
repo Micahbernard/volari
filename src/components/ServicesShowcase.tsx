@@ -333,7 +333,7 @@ export default function ServicesShowcase() {
             key={service.id}
             ref={setCardRef(i)}
             data-cursor-label="Explore"
-            className="group relative flex w-[85vw] shrink-0 flex-col rounded-sm transition-[box-shadow,ring-color] duration-500 ring-1 ring-transparent md:w-[65vw] lg:w-[55vw] hover:shadow-[0_0_48px_-14px_rgba(255,255,255,0.055)] hover:ring-v-smoke/20"
+            className="group relative flex w-[85vw] shrink-0 flex-col rounded-sm transition-[box-shadow,ring-color] duration-500 ring-1 ring-transparent md:w-[65vw] lg:w-[55vw] hover:shadow-[0_0_48px_-14px_var(--card-hover-glow)] hover:ring-v-smoke/20"
           >
             {/* ── Card visual area — distortion target ── */}
             <div className="relative overflow-hidden rounded-sm">
@@ -343,8 +343,8 @@ export default function ServicesShowcase() {
                 style={{ willChange: "transform" }}
               >
                 {/* Abstract visual — gradient + noise texture via CSS */}
-                <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_30%_50%,rgba(42,42,42,0.3),transparent_70%)]" />
-                <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_70%_70%,rgba(26,26,26,0.4),transparent_60%)]" />
+                <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_30%_50%,var(--card-inner-shade-a),transparent_70%)]" />
+                <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_70%_70%,var(--card-inner-shade-b),transparent_60%)]" />
 
                 {/* Large service number watermark */}
                 <span className="absolute bottom-4 right-6 font-[family-name:var(--font-playfair)] text-[clamp(5rem,12vw,10rem)] leading-none text-white/[0.03] md:bottom-6 md:right-10">
