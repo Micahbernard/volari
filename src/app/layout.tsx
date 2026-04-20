@@ -6,6 +6,7 @@ import ThemeProvider from "@/providers/ThemeProvider";
 import CustomCursor from "@/components/CustomCursor";
 import Navbar from "@/components/Navbar";
 import WebGLBackground from "@/components/WebGLBackground";
+import ShadowConsumeOverlay from "@/components/ShadowConsumeOverlay";
 import PageTransitionProvider from "@/providers/PageTransitionProvider";
 
 // ── Pre-hydration theme script ──
@@ -98,6 +99,13 @@ export default function RootLayout({
           <SmoothScrollProvider>
             {/* WebGL fluid background — fixed -z-1 */}
             <WebGLBackground />
+
+            {/* Shadow-consume overlay — fixed z-[9998]. Mounted
+                persistently; sits transparent until ThemeProvider
+                fires a day → void flip, then renders the living-
+                shadow GLSL envelope edge-to-edge and resolves the
+                peak/finished promises that drive the theme swap. */}
+            <ShadowConsumeOverlay />
 
             {/* Navigation — fixed z-50 */}
             <Navbar />

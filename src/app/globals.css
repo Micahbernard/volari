@@ -386,17 +386,24 @@ body.theme-flipping *::after {
 }
 
 /* ═════════════════════════════════════════════════════════════════════
-   Theme flip via View Transitions API — crest radial
+   Theme flip — direction-dependent transitions
 
-   Snapshots ::view-transition-old(root) / ::view-transition-new(root).
-   ThemeProvider sets --flip-ox / --flip-oy from the crest button centre.
+   RISE (void → day) — View Transitions API radial sunrise from the
+        crest. Snapshots ::view-transition-old(root) /
+        ::view-transition-new(root) and clip-paths a circle outward
+        from --flip-ox / --flip-oy.
 
-   RISE (void → day) — sunlight expands from the crest; bright at first,
-        then settles as the circle reaches the edges.
-   SET  (day → void) — shadow / void expands from the crest, consuming light.
+   SET  (day → void) — GLSL shadow-consume overlay rendered by
+        <ShadowConsumeOverlay /> (see components/ShadowConsumeOverlay
+        + shaders/shadowConsume). No CSS is required here — the
+        overlay owns its own fullscreen R3F canvas and animates
+        uniforms from inside the frame loop. Does NOT use View
+        Transitions, because the VT API aborts with InvalidStateError
+        whenever document.visibilityState is hidden, and the effect
+        must render every time the crest is pressed.
    ═════════════════════════════════════════════════════════════════════ */
 
-/* ── Default shared envelope (applies to both directions) ── */
+/* ── Shared envelope for the RISE path only ── */
 ::view-transition-old(root),
 ::view-transition-new(root) {
   animation-fill-mode: both;
@@ -411,14 +418,6 @@ body.theme-flipping *::after {
 }
 :root[data-flip-direction="rise"]::view-transition-new(root) {
   animation: crest-sunrise 1.5s var(--ease-out-expo) both;
-}
-
-/* ── SET — day → void — void / shadow from crest ── */
-:root[data-flip-direction="set"]::view-transition-old(root) {
-  animation: crest-hold 1.5s var(--ease-out-expo) both;
-}
-:root[data-flip-direction="set"]::view-transition-new(root) {
-  animation: crest-void-consume 1.5s var(--ease-out-expo) both;
 }
 
 @keyframes crest-hold {
@@ -443,24 +442,6 @@ body.theme-flipping *::after {
   }
 }
 
-/* New (void) eats outward; heavy mid-flip, then neutral once full */
-@keyframes crest-void-consume {
-  0% {
-    clip-path: circle(0px at var(--flip-ox) var(--flip-oy));
-    filter: brightness(0.5) saturate(0.68) hue-rotate(-14deg);
-    box-shadow: inset 0 0 220px rgba(0, 0, 0, 0.72);
-  }
-  42% {
-    filter: brightness(0.78) saturate(0.82) hue-rotate(-7deg);
-    box-shadow: inset 0 0 130px rgba(0, 0, 0, 0.48);
-  }
-  100% {
-    clip-path: circle(150vmax at var(--flip-ox) var(--flip-oy));
-    filter: brightness(1) saturate(1) hue-rotate(0deg);
-    box-shadow: inset 0 0 0 rgba(0, 0, 0, 0);
-  }
-}
-
 /* Asymmetric colour pass — peaks ~mid-transition (~0.38–0.45), returns to neutral */
 @keyframes dawn-warm-old {
   0%,
@@ -472,26 +453,22 @@ body.theme-flipping *::after {
   }
 }
 
-@keyframes nightfall-new-mood {
-  0%,
-  100% {
-    filter: brightness(1) saturate(1) hue-rotate(0deg);
-    box-shadow: inset 0 0 0 rgba(0, 0, 0, 0);
-  }
-  42% {
-    filter: brightness(0.9) saturate(0.88) hue-rotate(-8deg);
-    box-shadow: inset 0 0 120px rgba(0, 0, 0, 0.34);
-  }
-}
-
-/* Fallback (no View Transitions): same dawn / nightfall intent on the live document */
+/* Fallback (no View Transitions) for RISE: subtle warm bloom on the live
+   document. SET has no fallback branch — its overlay is imperative and
+   path-independent, so nothing is needed here for day→void. */
 :root[data-flip-direction="rise"] body.theme-flipping {
   filter: brightness(1.03) sepia(0.07);
 }
-:root[data-flip-direction="set"] body.theme-flipping {
-  filter: brightness(0.97) saturate(0.94) hue-rotate(-4deg);
-  box-shadow: inset 0 0 90px rgba(0, 0, 0, 0.18);
-}
+
+/* ═════════════════════════════════════════════════════════════════════
+   SET path — day → void
+   No CSS. The shadow-consume overlay is a fullscreen R3F canvas
+   rendered by <ShadowConsumeOverlay />. Animation lives entirely in
+   GLSL (see src/shaders/shadowConsume.ts) and uniform writes happen
+   inside the R3F frame loop. Keeping CSS out of this path means the
+   effect is deterministic across browsers that differ on clip-path /
+   animation timing edge cases.
+   ═════════════════════════════════════════════════════════════════════ */
 
 /* ── Reduced motion ── */
 @media (prefers-reduced-motion: reduce) {
@@ -500,11 +477,15 @@ body.theme-flipping *::after {
     animation-duration: 0.001s !important;
   }
 
-  :root[data-flip-direction="rise"] body.theme-flipping,
-  :root[data-flip-direction="set"] body.theme-flipping {
+  :root[data-flip-direction="rise"] body.theme-flipping {
     filter: none !important;
-    box-shadow: none !important;
   }
+
+  /* The shadow-consume overlay honours reduced motion by checking
+     window.matchMedia inside ShadowConsumeOverlay — no CSS hook
+     needed. If the user prefers reduced motion, the component short-
+     circuits the uniform lerps and resolves peak immediately so the
+     theme swap still lands cleanly without the cinematic envelope. */
 }
 
 /* ── Hide native cursor on desktop when custom cursor is active ── */

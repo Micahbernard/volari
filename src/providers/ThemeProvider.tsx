@@ -19,6 +19,20 @@ import { flushSync } from "react-dom";
 // Persistence: sessionStorage per tab — a fresh tab always starts
 // in void so the flip remains a deliberate discovery act, not a
 // sticky preference.
+//
+// Two directional transitions:
+//   RISE (void → day) — View Transitions API radial sunrise from the
+//     crest button. The browser snapshots <html> and clip-paths a
+//     circle outward. Warm, bloomed, friendly.
+//   SET  (day → void) — a WebGL "shadow consume" overlay rendered
+//     by <ShadowConsumeOverlay /> (components/ShadowConsumeOverlay).
+//     A domain-warped fBm ink body, polar tendrils, and a radial
+//     front animate outward from the crest origin under GLSL; the
+//     theme swap happens under a full-black peak so the mutation
+//     is invisible. Bypasses View Transitions entirely because the
+//     VT API aborts with InvalidStateError whenever
+//     document.visibilityState is hidden (preview iframes,
+//     background tabs), and the effect must be reliable.
 // ─────────────────────────────────────────────────────────────
 
 export type Theme = "void" | "day";
@@ -46,6 +60,42 @@ function clearFlipOriginCss() {
   const root = document.documentElement;
   root.style.removeProperty("--flip-ox");
   root.style.removeProperty("--flip-oy");
+}
+
+// ─────────────────────────────────────────────────────────────
+// Shadow-consume bridge — module-level
+//
+// <ShadowConsumeOverlay /> registers a trigger on mount that
+// ThemeProvider invokes on day → void flips. The callback returns
+// two promises:
+//   – `peak`      resolves when the overlay has crossfaded to
+//                 solid black; ThemeProvider swaps data-theme +
+//                 shader palette inside that cover.
+//   – `finished`  resolves after the full envelope (fade-in,
+//                 expand, peak hold, fade-out); ThemeProvider
+//                 releases the flip lock here.
+//
+// Kept as a direct function reference — same pattern as
+// registerShaderFlip below — so there's exactly one failure
+// point (registration) and no subscriber races.
+// ─────────────────────────────────────────────────────────────
+export type ShadowConsumeHandle = {
+  peak: Promise<void>;
+  finished: Promise<void>;
+};
+
+type ShadowConsumeCallback = (originX: number, originY: number) => ShadowConsumeHandle;
+let shadowConsumeCallback: ShadowConsumeCallback | null = null;
+
+/**
+ * Called by ShadowConsumeOverlay on mount. Returns an unregister
+ * fn so the effect can clean up on unmount.
+ */
+export function registerShadowConsume(cb: ShadowConsumeCallback): () => void {
+  shadowConsumeCallback = cb;
+  return () => {
+    if (shadowConsumeCallback === cb) shadowConsumeCallback = null;
+  };
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -183,11 +233,74 @@ export default function ThemeProvider({ children }: { children: ReactNode }) {
       setIsFlipping(true);
       setFlipOriginCss(originElement);
 
+      if (next === "void") {
+        // ══ SET (day → void) — shadow-consume overlay ══
+        // All animation is rendered by <ShadowConsumeOverlay /> under
+        // GLSL. This branch is pure orchestration: trigger the shader,
+        // swap data-theme at the "peak" promise (full-black cover),
+        // release the lock at the "finished" promise.
+        //
+        // Fallback: if the overlay component isn't mounted (SSR edge,
+        // early error) we skip straight to applyFlip so the theme
+        // still swaps — the user just won't see the cinematic.
+        document.documentElement.setAttribute("data-flip-direction", "set");
+
+        const originX = originElement
+          ? originElement.getBoundingClientRect().left +
+            originElement.getBoundingClientRect().width / 2
+          : window.innerWidth / 2;
+        const originY = originElement
+          ? originElement.getBoundingClientRect().top +
+            originElement.getBoundingClientRect().height / 2
+          : Math.min(96, window.innerHeight * 0.12);
+
+        const trigger = shadowConsumeCallback;
+        if (!trigger) {
+          applyFlip(false);
+          document.documentElement.removeAttribute("data-flip-direction");
+          clearFlipOriginCss();
+          setIsFlipping(false);
+          flipLockRef.current = false;
+          return;
+        }
+
+        const { peak, finished } = trigger(originX, originY);
+
+        // Shader lerp starts NOW, not at peak. It has the full
+        // envelope (~1880ms) to reach the void palette so when the
+        // shadow pulls back, the background is already in position
+        // and there's no lingering cream peeking through.
+        shaderFlipCallback?.(next, false);
+
+        peak.then(() => {
+          // data-theme + React state swap under full cover.
+          // We bypass applyFlip's shader call (already fired above)
+          // and write the state directly.
+          document.documentElement.setAttribute("data-theme", next);
+          flushSync(() => {
+            setTheme(next);
+          });
+          try {
+            sessionStorage.setItem(STORAGE_KEY, next);
+          } catch {
+            // sessionStorage can throw in sandboxed iframes. Swap is
+            // in place either way.
+          }
+        });
+
+        finished.then(() => {
+          document.documentElement.removeAttribute("data-flip-direction");
+          clearFlipOriginCss();
+          setIsFlipping(false);
+          flipLockRef.current = false;
+        });
+        return;
+      }
+
+      // ══ RISE (void → day) — View Transitions crest-radial sunrise ══
       const startViewTransition = getStartViewTransition();
       if (startViewTransition) {
-        // Radial View Transitions from crest: rise = sunlight (void→day), set = void (day→void).
-        const direction = next === "day" ? "rise" : "set";
-        document.documentElement.setAttribute("data-flip-direction", direction);
+        document.documentElement.setAttribute("data-flip-direction", "rise");
         const tx = startViewTransition(() => applyFlip(true));
         const cleanup = () => {
           clearFlipOriginCss();
@@ -197,10 +310,9 @@ export default function ThemeProvider({ children }: { children: ReactNode }) {
         };
         tx.finished.then(cleanup, cleanup);
       } else {
-        // ── Fallback: color crossfade on body.theme-flipping ──
-        // No VT snapshot — radial mask unavailable; crest origin still set for shader + subtle filter.
-        const direction = next === "day" ? "rise" : "set";
-        document.documentElement.setAttribute("data-flip-direction", direction);
+        // Fallback for browsers without View Transitions: global crossfade
+        // via body.theme-flipping. Crest origin still set for the shader.
+        document.documentElement.setAttribute("data-flip-direction", "rise");
         document.body.classList.add("theme-flipping");
         applyFlip(false);
 
@@ -217,6 +329,13 @@ export default function ThemeProvider({ children }: { children: ReactNode }) {
     [theme]
   );
 
+  // Unmount cleanup — only the rise fallback owns a host-side timer.
+  // The shadow-consume path is entirely driven by promises resolved
+  // from inside the R3F frame loop (see ShadowConsumeOverlay), so
+  // there's no residual timer for ThemeProvider to clear. If the
+  // provider unmounts mid-shadow, the overlay's own useEffect
+  // teardown unregisters the callback and the dangling promises
+  // are garbage-collected with the active ref.
   useEffect(() => {
     return () => {
       if (flipTimeoutRef.current) clearTimeout(flipTimeoutRef.current);
