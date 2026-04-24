@@ -35,6 +35,7 @@ export default function PageTransition({
   const prefersReducedMotion = usePrefersReducedMotion();
 
   useEffect(() => {
+    console.log("[v0] PageTransition: isPresent =", isPresent, "prefersReducedMotion =", prefersReducedMotion);
     const enterDur = prefersReducedMotion ? 0.45 : DURATION_ENTER_S;
     const exitDur = prefersReducedMotion ? 0.4 : DURATION_EXIT_S;
 
