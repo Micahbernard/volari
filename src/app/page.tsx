@@ -43,7 +43,6 @@ export default function Home() {
   );
 
   useEffect(() => {
-    console.log("[v0] GSAP animation starting, overlayRef:", overlayRef.current);
     const ctx = gsap.context(() => {
       // ════════════════════════════════════════════════════════
       // MASTER TIMELINE — The Hero Sequence
@@ -458,17 +457,13 @@ export default function Home() {
   };
   return (
     <PageTransition>
-      {/* TEST: Remove this once animation is confirmed working */}
-      <div className="fixed top-4 left-4 z-[9999] bg-red-500 text-white p-4 rounded">
-        Page loaded - this should be visible
-      </div>
       {/* ═══════════════════════════════════════════════════════
           CURTAIN OVERLAY — Solid black, lifts to reveal hero
           ═══════════════════════════════════════════════════════ */}
       <div
         ref={overlayRef}
-        className="fixed inset-0 z-40 bg-v-black"
-        style={{ willChange: "transform" }}
+        className="fixed inset-0 z-40 bg-v-black pointer-events-none"
+        style={{ willChange: "transform", transform: "translateY(-100%)" }}
         aria-hidden="true"
       />
 
