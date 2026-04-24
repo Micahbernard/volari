@@ -83,6 +83,10 @@ function FluidPlane() {
   const materialRef = useRef<THREE.ShaderMaterial>(null);
   const meshRef = useRef<THREE.Mesh>(null);
   const { viewport } = useThree();
+  
+  useEffect(() => {
+    console.log("[v0] FluidPlane mounted, viewport:", viewport.width, viewport.height);
+  }, [viewport]);
 
   // Mutable animation state
   const mouseTarget = useRef({ x: 0.5, y: 0.5 });
@@ -233,9 +237,15 @@ function FluidPlane() {
   }, []);
 
   // ── Per-frame uniform updates ──
+  const frameCount = useRef(0);
   useFrame(({ clock }) => {
     const mat = materialRef.current;
     if (!mat) return;
+    
+    frameCount.current++;
+    if (frameCount.current === 1 || frameCount.current === 60) {
+      console.log("[v0] useFrame running, frame:", frameCount.current, "time:", clock.getElapsedTime().toFixed(2));
+    }
 
     const t = clock.getElapsedTime() * motionTimeScale.current;
     shaderTime.current = t;
@@ -309,11 +319,27 @@ function FluidPlane() {
 //   antialias: false, alpha: false, stencil: false, depth: false
 // ─────────────────────────────────────────────────────────────
 export default function WebGLBackground() {
+  useEffect(() => {
+    console.log("[v0] WebGLBackground mounted");
+  }, []);
+  
   return (
     <div
       className="pointer-events-none fixed inset-0 -z-1"
       aria-hidden="true"
     >
+      {/* CSS fallback gradient for environments where WebGL may not render */}
+      <div 
+        className="absolute inset-0"
+        style={{
+          background: `
+            radial-gradient(ellipse 80% 50% at 50% 100%, rgba(40, 48, 56, 0.4) 0%, transparent 50%),
+            radial-gradient(ellipse 60% 40% at 30% 80%, rgba(79, 92, 106, 0.2) 0%, transparent 40%),
+            radial-gradient(ellipse 50% 35% at 70% 70%, rgba(60, 70, 85, 0.15) 0%, transparent 35%),
+            var(--v-black)
+          `,
+        }}
+      />
       <Canvas
         camera={{
           position: [0, 0, 1],
@@ -335,7 +361,8 @@ export default function WebGLBackground() {
         // Canvas paints opaque every frame (alpha:false), so this bg is
         // a pre-init fallback. Use the themed var so cold-start matches
         // whichever theme the pre-hydration script chose.
-        style={{ background: "var(--v-black)" }}
+        style={{ background: "transparent" }}
+        onCreated={() => console.log("[v0] Canvas created")}
       >
         <FluidPlane />
       </Canvas>
