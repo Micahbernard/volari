@@ -647,60 +647,120 @@ body.theme-flipping *::after {
   }
 }
 
-/* ── Mercury alive — internal body breathing ─
-   The mercury metal slowly shifts, creating the illusion of
-   internal convection. A subtle scale + gradient offset that
-   makes the fill feel like living liquid, not a flat paint. */
-@keyframes mercury-alive {
-  0%, 100% {
-    transform: scale(1) translate(0, 0);
+/* ── Mercury alive — concentric ripple rings expanding ─
+   Like a fingertip touching a pool of mercury — rings
+   propagate outward, catch light at their crests, then fade.
+   Multiple rings at staggered intervals create interference. */
+@keyframes mercury-ripple {
+  0% {
+    transform: scale(0.6);
+    opacity: 0.5;
   }
-  33% {
-    transform: scale(1.025) translate(-1px, 0.5px);
+  60% {
+    opacity: 0.15;
   }
-  66% {
-    transform: scale(1.015) translate(0.5px, -0.5px);
+  100% {
+    transform: scale(1.6);
+    opacity: 0;
   }
 }
 
-.mercury-alive {
-  animation: mercury-alive 4.2s ease-in-out infinite;
+.mercury-ripples circle {
+  animation: mercury-ripple 3.5s ease-out infinite;
+  transform-origin: 24px 24px;
+}
+.mercury-ripples circle:nth-child(1) { animation-delay: 0s; animation-duration: 2.8s; }
+.mercury-ripples circle:nth-child(2) { animation-delay: 0.5s; animation-duration: 3.2s; }
+.mercury-ripples circle:nth-child(3) { animation-delay: 1.0s; animation-duration: 3.6s; }
+.mercury-ripples circle:nth-child(4) { animation-delay: 1.5s; animation-duration: 4.0s; }
+.mercury-ripples circle:nth-child(5) { animation-delay: 2.0s; animation-duration: 4.4s; }
+
+/* ── Mercury wave — slow gradient drift ─
+   The background metal appears to convect and shift,
+   like warm mercury rising and cool mercury sinking. */
+@keyframes mercury-wave {
+  0% {
+    transform: translate(0, 0) scale(1);
+  }
+  25% {
+    transform: translate(-1px, 0.5px) scale(1.015);
+  }
+  50% {
+    transform: translate(0.5px, -0.5px) scale(1.01);
+  }
+  75% {
+    transform: translate(-0.5px, 0) scale(1.02);
+  }
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+}
+
+.mercury-wave {
+  animation: mercury-wave 5s ease-in-out infinite;
   transform-origin: 24px 24px;
 }
 
-/* ── Mercury shimmer — travelling highlight ─
-   A faint bright spot that slowly drifts across the mercury
-   surface, like a distant light source moving overhead. */
-@keyframes mercury-shimmer {
+/* ── Mercury alive highlight — orbiting specular ─
+   A bright spot that slowly circles the mercury surface,
+   catching different ripple crests as it moves. */
+@keyframes mercury-alive-highlight {
   0% {
-    opacity: 0;
-    transform: translate(-12px, 4px);
+    transform: translate(0, 0);
+    opacity: 0.6;
   }
   25% {
+    transform: translate(3px, -2px);
     opacity: 1;
   }
   50% {
-    opacity: 0;
-    transform: translate(12px, -4px);
+    transform: translate(0, -3px);
+    opacity: 0.5;
   }
   75% {
-    opacity: 0.6;
+    transform: translate(-3px, -1px);
+    opacity: 0.8;
   }
   100% {
-    opacity: 0;
-    transform: translate(-12px, 4px);
+    transform: translate(0, 0);
+    opacity: 0.6;
   }
 }
 
-.mercury-shimmer {
-  animation: mercury-shimmer 6s ease-in-out infinite;
-  mix-blend-mode: overlay;
+.mercury-alive-highlight {
+  animation: mercury-alive-highlight 7s ease-in-out infinite;
+}
+
+/* ── Mercury ripple field — the interference pattern ─
+   A subtle radial gradient that slowly rotates, creating
+   the illusion of light playing across rippling metal. */
+@keyframes mercury-ripple-field {
+  0% {
+    transform: rotate(0deg) scale(1);
+    opacity: 0.5;
+  }
+  50% {
+    transform: rotate(180deg) scale(1.08);
+    opacity: 0.7;
+  }
+  100% {
+    transform: rotate(360deg) scale(1);
+    opacity: 0.5;
+  }
+}
+
+.mercury-ripple-field {
+  animation: mercury-ripple-field 12s linear infinite;
+  transform-origin: 24px 24px;
+  mix-blend-mode: soft-light;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .mercury-alive,
-  .mercury-shimmer {
-    animation: none;
+  .mercury-ripples circle,
+  .mercury-wave,
+  .mercury-alive-highlight,
+  .mercury-ripple-field {
+    animation: none !important;
   }
 }
 
