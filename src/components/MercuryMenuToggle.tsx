@@ -1,7 +1,18 @@
 "use client";
 
-import { motion } from "framer-motion";
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  motion,
+  useMotionValue,
+  useSpring,
+  useTransform,
+  type MotionValue,
+} from "framer-motion";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import type {
   ComponentProps,
   FocusEvent as ReactFocusEvent,
@@ -10,52 +21,26 @@ import type {
 } from "react";
 
 // ─────────────────────────────────────────────────────────────
-// MercuryMenuToggle  ✦  Alchemical Vessel
+// MercuryMenuToggle  ✦  Alchemical Decanter
 //
-// A crucible of quicksilver — the navbar's ritual instrument.
-// Inspired by the site's "Modern Mystic" identity: mercury is
-// one of the three primes (sulphur, salt, mercury) and the
-// volatile agent of transformation. The button embodies this
-// philosophy — a sealed vessel that, on approach, reveals its
-// living contents.
+// A vessel of quicksilver that fills on approach.
 //
-// Rest:
-//   A dark crucible of gunmetal and obsidian. Through the
-//   glass, a faint silhouette of mercury haunts the chamber
-//   — a ghost that flickers at the gravitational convergence
-//   beat (CSS lens-ghost-flicker, 9s cycle). Three concentric
-//   rings pulse around the rim: inner border, tight halo,
-//   wide halo — each at a distinct phase, producing a
-//   lensing distortion that reads as gravitational pull.
+// IDLE: The crucible breathes — a faint ring pulses outward
+//   and back, drawing the eye. Inside, a ghost of mercury
+//   flickers at the convergence beat.
 //
-// Hover:
-//   The vessel WARMS. Quicksilver floods upward from the
-//   base as a liquid column — not a flat sphere, but a
-//   heavy metal with surface tension. The meniscus line
-//   (where mercury meets the void) glows with a thin
-//   silver ring. A specular highlight rides the surface,
-//   shifting with the cursor to create 3D volume.
+// HOVER: Liquid metal RISES from the bottom as a heavy column.
+//   The surface tilts toward the cursor — physics-driven
+//   slosh that feels like real mercury in a glass vessel.
+//   A specular highlight rides the meniscus. The dot at
+//   centre rotates to indicate readiness.
 //
-//   The hamburger icon magnifies subtly through the liquid
-//   lens — offset + scale driven by cursor proximity.
+// OPEN: Mercury holds at peak. The dot unfurls into an X.
+//   Halo locks at full brightness.
 //
-//   A faint gold accent blooms at the rim, referencing the
-//   site's accent token (#d4a853) but kept subordinate so
-//   the mercury remains the protagonist.
-//
-// Open:
-//   Ring cycle collapses to 3.5s. Halo locks at peak.
-//   Hamburger morphs to ✕. Mercury holds its level —
-//   the vessel is in active use.
-//
-// Theme (daybreak):
-//   All mercury stops swap to warm brass via CSS variables.
-//   The ghost becomes umber; the specular warms to champagne.
-//   No JS logic required — the theme flip is pure CSS.
-//
-// Reduced motion:
-//   Static mercury at 40% opacity. No flicker, no rise
-//   animation, no particles. Cursor tracking disabled.
+// THEME: All colours route through CSS variables — the same
+//   steel gradient as the hero VOLARI text. Daybreak swaps
+//   to warm brass automatically.
 // ─────────────────────────────────────────────────────────────
 
 type Phase = "rest" | "enter" | "active" | "exit";
@@ -91,6 +76,29 @@ export default function MercuryMenuToggle({
     ? "hover"
     : "rest";
 
+  // ─── Cursor tracking for liquid slosh ──────────────────────
+  const px = useMotionValue(0.5);
+  const py = useMotionValue(0.5);
+
+  const cx = useSpring(px, { stiffness: 120, damping: 18, mass: 0.6 });
+  const cy = useSpring(py, { stiffness: 120, damping: 18, mass: 0.6 });
+
+  // Intensity: 0 at rest → 1 when mercury is present
+  const intensity = useSpring(0, { stiffness: 60, damping: 16 });
+  useEffect(() => {
+    intensity.set(isActive ? 1 : 0);
+  }, [isActive, intensity]);
+
+  // ─── Liquid surface tilt (cursor-driven slosh) ─────────────
+  // When cursor is at left edge (0), surface tilts left (-8deg)
+  // When cursor is at right edge (1), surface tilts right (+8deg)
+  const surfaceTilt = useTransform(cx, [0, 0.5, 1], [-10, 0, 10]);
+  const surfaceDip = useTransform(cy, [0, 0.5, 1], [-4, 0, 4]);
+
+  // Specular highlight slides opposite to tilt (reflection physics)
+  const specularX = useTransform(cx, (v) => 35 + (1 - v) * 20);
+  const specularY = useTransform(cy, (v) => 25 + (1 - v) * 15);
+
   // ─── Phase timers ──────────────────────────────────────────
   const enterTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const exitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -110,7 +118,7 @@ export default function MercuryMenuToggle({
     enterTimerRef.current = setTimeout(() => {
       setPhase("active");
       enterTimerRef.current = null;
-    }, 380);
+    }, 500);
   }, [clearTimers]);
 
   const beginExit = useCallback(() => {
@@ -121,8 +129,8 @@ export default function MercuryMenuToggle({
       restTimerRef.current = setTimeout(() => {
         setPhase("rest");
         restTimerRef.current = null;
-      }, 450);
-    }, 350);
+      }, 500);
+    }, 300);
   }, [clearTimers]);
 
   const cancelExit = useCallback(() => {
@@ -139,19 +147,36 @@ export default function MercuryMenuToggle({
   // ─── Event handlers ────────────────────────────────────────
   const handlePointerEnter = useCallback(
     (e: ReactPointerEvent<HTMLButtonElement>) => {
+      const rect = e.currentTarget.getBoundingClientRect();
+      px.set(Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width)));
+      py.set(Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height)));
       if (phase === "rest") beginEnter();
       else { cancelExit(); if (phase === "exit") setPhase("active"); }
       onPointerEnter?.(e);
     },
-    [phase, beginEnter, cancelExit, onPointerEnter]
+    [phase, px, py, beginEnter, cancelExit, onPointerEnter]
   );
 
   const handlePointerLeave = useCallback(
     (e: ReactPointerEvent<HTMLButtonElement>) => {
+      px.set(0.5);
+      py.set(0.5);
       if (phase === "active" || phase === "enter") beginExit();
       onPointerLeave?.(e);
     },
-    [phase, beginExit, onPointerLeave]
+    [phase, px, py, beginExit, onPointerLeave]
+  );
+
+  const handlePointerMove = useCallback(
+    (e: ReactPointerEvent<HTMLButtonElement>) => {
+      if (phase === "active" || phase === "enter") {
+        const rect = e.currentTarget.getBoundingClientRect();
+        px.set(Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width)));
+        py.set(Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height)));
+      }
+      onPointerMove?.(e);
+    },
+    [phase, px, py, onPointerMove]
   );
 
   const handleFocus = useCallback(
@@ -175,12 +200,32 @@ export default function MercuryMenuToggle({
     onToggle?.(!isOpen);
   }, [isOpen, onToggle]);
 
-  // ─── SVG gradient IDs (stable per instance) ────────────────
+  // ─── Stable SVG IDs ────────────────────────────────────────
   const uid = useRef(`merc-${Math.random().toString(36).slice(2, 9)}`).current;
   const bodyId = `merc-body-${uid}`;
   const sheenId = `merc-sheen-${uid}`;
   const deepId = `merc-deep-${uid}`;
-  const ghostId = `merc-ghost-${uid}`;
+
+  // ─── Liquid fill clip-path ─────────────────────────────────
+  // Rises from bottom (100% inset) to full (0% inset)
+  const fillClip = useTransform(
+    intensity,
+    (i: number) => `inset(${Math.max(0, (1 - i) * 100)}% 0 0 0)`
+  );
+
+  // ─── Surface path with tilt ────────────────────────────────
+  // A curved meniscus line that tilts based on cursor position
+  const surfacePath = useTransform<number, string>(
+    [surfaceTilt, surfaceDip],
+    (vals: number[]) => {
+      const [tilt, dip] = vals;
+      // Convert tilt angle to endpoint offsets
+      const leftY = 4 + dip + tilt * 0.3;
+      const rightY = 4 - dip - tilt * 0.3;
+      const midY = -2 + dip;
+      return `M 2 ${leftY} Q 24 ${midY} 46 ${rightY}`;
+    }
+  );
 
   return (
     <button
@@ -194,52 +239,60 @@ export default function MercuryMenuToggle({
       onClick={handleClick}
       onPointerEnter={handlePointerEnter}
       onPointerLeave={handlePointerLeave}
+      onPointerMove={handlePointerMove}
       onFocus={handleFocus}
       onBlur={handleBlur}
       className={[
         "lens-button group/lens relative inline-flex h-12 w-12 shrink-0",
         "items-center justify-center rounded-full",
         "outline-none cursor-pointer select-none touch-manipulation",
-        "bg-[var(--v-void)] border",
+        "bg-[var(--v-void)] border border-[rgba(55,55,62,0.25)]",
         "transition-colors duration-500",
-        "[animation:lens-border-pulse_9s_ease-in-out_infinite,lens-shadow-pulse_9s_ease-in-out_infinite]",
-        "data-[state=hover]:[animation-duration:5s,5s]",
-        "data-[state=open]:[animation-duration:3.5s,3.5s]",
+        "hover:border-[rgba(100,100,110,0.45)]",
         className,
       ].join(" ")}
     >
-      {/* ── Outer halo — gravitational lens glow ──────────────── */}
+      {/* ── Idle breathing pulse — draws the eye ────────────── */}
       <span
         aria-hidden="true"
         className="
-          pointer-events-none absolute inset-[-1px] rounded-full
-          opacity-0 transition-opacity duration-700
-          ease-[cubic-bezier(0.22,1,0.36,1)]
-          group-data-[state=hover]/lens:opacity-60
-          group-data-[state=open]/lens:opacity-100
-          motion-reduce:hidden
+          pointer-events-none absolute inset-[-4px] rounded-full
+          [animation:mercury-breathe_3s_ease-in-out_infinite]
+          motion-reduce:[animation:none]
         "
         style={{
-          boxShadow: "inset 0 0 14px rgba(200,200,212,0.40), 0 0 18px 3px rgba(200,200,212,0.30)",
+          boxShadow: "0 0 12px 3px rgba(140,140,155,0.15), 0 0 28px 8px rgba(140,140,155,0.08)",
         }}
       />
 
-      {/* ── Gold accent bloom (subtle — only on hover) ──────── */}
-      <span
+      {/* ── Outer halo (hover / open only) ──────────────────── */}
+      <motion.span
         aria-hidden="true"
-        className="
-          pointer-events-none absolute inset-[-2px] rounded-full
-          opacity-0 transition-opacity duration-[900ms]
-          ease-[cubic-bezier(0.22,1,0.36,1)]
-          group-data-[state=hover]/lens:opacity-100
-          group-data-[state=open]/lens:opacity-100
-        "
+        className="pointer-events-none absolute inset-[-2px] rounded-full"
+        initial={false}
+        animate={{
+          opacity: isActive ? 1 : 0,
+          scale: isActive ? 1 : 0.85,
+        }}
+        transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
         style={{
-          boxShadow: "0 0 20px 4px var(--accent-glow-soft), 0 0 40px 8px var(--accent-glow-soft)",
+          boxShadow: "inset 0 0 16px rgba(200,200,212,0.35), 0 0 22px 4px rgba(200,200,212,0.25)",
         }}
       />
 
-      {/* ── Mercury vessel — single SVG ─────────────────────── */}
+      {/* ── Gold accent bloom (hover only) ──────────────────── */}
+      <motion.span
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-[-3px] rounded-full"
+        initial={false}
+        animate={{ opacity: isActive ? 0.6 : 0 }}
+        transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+        style={{
+          boxShadow: "0 0 24px 6px var(--accent-glow-soft), 0 0 48px 12px var(--accent-glow-soft)",
+        }}
+      />
+
+      {/* ── Mercury vessel (single SVG) ─────────────────────── */}
       <svg
         viewBox="0 0 48 48"
         className="absolute inset-[2px] h-[calc(100%-4px)] w-[calc(100%-4px)] overflow-hidden rounded-full"
@@ -247,14 +300,7 @@ export default function MercuryMenuToggle({
         aria-hidden="true"
       >
         <defs>
-          {/* 
-            MERCURY BODY — 9-stop metallic gradient.
-            Uses the same stops as the hero VOLARI text so the
-            button feels like a piece of the same material.
-            On void: cool steel. On daybreak: warm brass.
-            The gradient runs diagonally (135deg) so the metal
-            reads as having depth and grain.
-          */}
+          {/* 9-stop steel gradient (auto-swaps to brass on daybreak) */}
           <linearGradient id={bodyId} x1="0%" y1="100%" x2="100%" y2="0%">
             <stop offset="0%" stopColor="var(--hero-metal-0)" />
             <stop offset="11%" stopColor="var(--hero-metal-1)" />
@@ -267,169 +313,162 @@ export default function MercuryMenuToggle({
             <stop offset="100%" stopColor="var(--hero-metal-8)" />
           </linearGradient>
 
-          {/* 
-            DEEP SHADOW — beneath the surface.
-            Creates the illusion that mercury has weight
-            and sits at the bottom of the vessel.
-          */}
-          <radialGradient id={deepId} cx="35%" cy="75%" r="65%">
-            <stop offset="0%" stopColor="rgba(5,5,8,0.55)" />
+          {/* Specular highlight — razor sharp, cursor-driven */}
+          <motion.radialGradient
+            id={sheenId}
+            cx={specularX as MotionValue<number>}
+            cy={specularY as MotionValue<number>}
+            r="0.22"
+          >
+            <stop offset="0%" stopColor="rgba(255,255,255,0.92)" />
+            <stop offset="30%" stopColor="rgba(240,240,248,0.45)" />
+            <stop offset="65%" stopColor="rgba(220,220,232,0.08)" />
+            <stop offset="100%" stopColor="rgba(220,220,232,0)" />
+          </motion.radialGradient>
+
+          {/* Deep shadow beneath the surface */}
+          <radialGradient id={deepId} cx="35%" cy="80%" r="65%">
+            <stop offset="0%" stopColor="rgba(5,5,8,0.60)" />
             <stop offset="40%" stopColor="rgba(8,8,14,0.30)" />
             <stop offset="100%" stopColor="rgba(10,10,18,0)" />
           </radialGradient>
 
-          {/* 
-            SPECULAR CAP — the bright reflection on the liquid surface.
-            Offset to upper-left so the metal reads as illuminated
-            from above. Small radius for a razor-sharp highlight.
-          */}
-          <radialGradient id={sheenId} cx="32%" cy="28%" r="28%">
-            <stop offset="0%" stopColor="rgba(255,255,255,0.90)" />
-            <stop offset="30%" stopColor="rgba(240,240,248,0.50)" />
-            <stop offset="65%" stopColor="rgba(220,220,232,0.10)" />
-            <stop offset="100%" stopColor="rgba(220,220,232,0)" />
-          </radialGradient>
-
-          {/* 
-            GHOST — the haunting silhouette at rest.
-            Centred, dim, desaturated. Briefly materialises
-            during the ring convergence beat via CSS animation.
-          */}
-          <radialGradient id={ghostId} cx="42%" cy="38%" r="82%">
-            <stop offset="0%" stopColor="var(--hero-metal-4)" stopOpacity="0.35" />
-            <stop offset="50%" stopColor="var(--hero-metal-2)" stopOpacity="0.20" />
+          {/* Mask for ghost flicker — fades in/out via CSS */}
+          <radialGradient id={`${uid}-ghost`} cx="42%" cy="38%" r="82%">
+            <stop offset="0%" stopColor="var(--hero-metal-4)" stopOpacity="0.30" />
+            <stop offset="50%" stopColor="var(--hero-metal-2)" stopOpacity="0.15" />
             <stop offset="100%" stopColor="var(--hero-metal-0)" stopOpacity="0" />
           </radialGradient>
         </defs>
 
-        {/* ── Ghost flicker (rest only) ───────────────────── */}
+        {/* ── Ghost at rest (faint mercury silhouette) ──────── */}
         {phase === "rest" && (
           <g className="lens-ghost">
-            <circle cx="24" cy="24" r="21" fill={`url(#${ghostId})`} />
+            <circle cx="24" cy="24" r="20" fill={`url(#${uid}-ghost)`} />
           </g>
         )}
 
-        {/* ── Mercury liquid body ─────────────────────────── */}
+        {/* ── Liquid mercury body ───────────────────────────── */}
         <motion.g
           initial={false}
           animate={{
-            scale: phase === "enter" || phase === "active" ? 1 : 0.88,
-            opacity: phase === "enter" || phase === "active" ? 1 : 0,
+            opacity: isActive ? 1 : 0,
           }}
-          style={{ transformOrigin: "24px 26px" }}
-          transition={
-            phase === "enter"
-              ? { duration: 0.55, delay: 0.10, ease: [0.22, 1, 0.36, 1] }
-              : phase === "exit"
-              ? { duration: 0.35, ease: [0.4, 0, 0.6, 1] }
-              : { duration: 0.2 }
-          }
+          transition={{ duration: 0.15 }}
         >
-          {/* Base metal */}
-          <rect x="0" y="0" width="48" height="48" fill={`url(#${bodyId})`} />
-          {/* Deep shadow for weight */}
-          <rect x="0" y="0" width="48" height="48" fill={`url(#${deepId})`} />
-          {/* Specular highlight */}
-          <rect x="0" y="0" width="48" height="48" fill={`url(#${sheenId})`} />
+          {/* The mercury fill — clipped to rise from bottom */}
+          <motion.g
+            style={{ clipPath: fillClip }}
+            initial={false}
+            animate={{
+              y: isActive ? 0 : 6,
+            }}
+            transition={
+              phase === "enter"
+                ? { duration: 0.65, delay: 0.05, ease: [0.22, 1, 0.36, 1] }
+                : phase === "exit"
+                ? { duration: 0.45, ease: [0.4, 0, 0.6, 1] }
+                : { duration: 0.2 }
+            }
+          >
+            <rect x="0" y="0" width="48" height="48" fill={`url(#${bodyId})`} />
+            <rect x="0" y="0" width="48" height="48" fill={`url(#${deepId})`} />
+            <rect x="0" y="0" width="48" height="48" fill={`url(#${sheenId})`} />
+
+            {/* Meniscus surface line — tilts with cursor */}
+            <motion.path
+              d="M 2 4 Q 24 -2 46 4"
+              fill="none"
+              stroke="var(--hero-metal-5)"
+              strokeWidth="0.8"
+              strokeOpacity={0.4}
+              initial={false}
+              animate={{
+                d: surfacePath.get(),
+              }}
+              transition={{ duration: 0.08 }}
+              style={{
+                rotate: surfaceTilt,
+                transformOrigin: "24px 4px",
+              }}
+            />
+          </motion.g>
         </motion.g>
 
-        {/* 
-          MENISCUS — the surface tension line.
-          A thin bright ring where mercury meets the void.
-          Only visible when the liquid is present.
-        */}
-        <motion.circle
+        {/* ── Inner rim — vessel wall ───────────────────────── */}
+        <circle
           cx="24"
           cy="24"
           r="21"
           fill="none"
-          stroke="var(--hero-metal-5)"
-          strokeWidth="0.7"
-          strokeOpacity={0.35}
-          initial={false}
-          animate={{
-            opacity: phase === "enter" || phase === "active" ? 1 : 0,
-          }}
-          transition={
-            phase === "enter"
-              ? { duration: 0.45, delay: 0.20, ease: [0.22, 1, 0.36, 1] }
-              : phase === "exit"
-              ? { duration: 0.25, ease: [0.4, 0, 0.6, 1] }
-              : { duration: 0.15 }
-          }
-        />
-
-        {/* 
-          INNER RIM — vessel wall highlight.
-          Creates the illusion of glass or polished obsidian
-          containing the mercury.
-        */}
-        <circle
-          cx="24"
-          cy="24"
-          r="21.5"
-          fill="none"
           stroke="var(--v-smoke)"
           strokeWidth="0.5"
-          strokeOpacity={0.3}
+          strokeOpacity={0.25}
         />
       </svg>
 
-      {/* ── Hamburger ↔ ✕ — above the mercury ─────────────── */}
+      {/* ── Menu icon: Dot → X ──────────────────────────────── */}
       <svg
         viewBox="0 0 48 48"
         className="relative h-full w-full"
         aria-hidden="true"
       >
         <motion.g
-          style={{
-            transformOrigin: "24px 24px",
-            mixBlendMode: "difference",
-          }}
+          style={{ transformOrigin: "24px 24px" }}
           initial={false}
           animate={{
-            scale: isActive ? 1.04 : 1,
+            rotate: isOpen ? 45 : 0,
           }}
-          transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+          transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
         >
-          {/* Top line → \ */}
-          <motion.g
+          {/* Centre dot — expands to form the X on open */}
+          <motion.circle
+            cx="24"
+            cy="24"
+            r={isOpen ? 12 : 3.5}
+            fill="none"
+            stroke="var(--v-chalk)"
+            strokeWidth="1.2"
+            strokeLinecap="round"
             initial={false}
-            animate={{ rotate: isOpen ? 45 : 0, y: isOpen ? 5 : 0 }}
-            style={{ transformOrigin: "24px 24px" }}
-            transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
-          >
-            <line
-              x1="16" y1="19" x2="32" y2="19"
-              stroke="var(--v-chalk)" strokeWidth="1.1" strokeLinecap="round"
-            />
-          </motion.g>
+            animate={{
+              r: isOpen ? 12 : 3.5,
+              strokeOpacity: isOpen ? 1 : 0.85,
+            }}
+            transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+          />
 
-          {/* Middle line → fades */}
-          <motion.g
+          {/* The cross lines — fade in only when open */}
+          <motion.line
+            x1="18"
+            y1="18"
+            x2="30"
+            y2="30"
+            stroke="var(--v-chalk)"
+            strokeWidth="1.2"
+            strokeLinecap="round"
             initial={false}
-            animate={{ scaleX: isOpen ? 0 : 1, opacity: isOpen ? 0 : 1 }}
-            style={{ transformOrigin: "24px 24px" }}
-            transition={{ duration: 0.3, ease: "easeOut" }}
-          >
-            <line
-              x1="16" y1="24" x2="32" y2="24"
-              stroke="var(--v-chalk)" strokeWidth="1.1" strokeLinecap="round"
-            />
-          </motion.g>
-
-          {/* Bottom line → / */}
-          <motion.g
+            animate={{
+              opacity: isOpen ? 1 : 0,
+              pathLength: isOpen ? 1 : 0,
+            }}
+            transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+          />
+          <motion.line
+            x1="30"
+            y1="18"
+            x2="18"
+            y2="30"
+            stroke="var(--v-chalk)"
+            strokeWidth="1.2"
+            strokeLinecap="round"
             initial={false}
-            animate={{ rotate: isOpen ? -45 : 0, y: isOpen ? -5 : 0 }}
-            style={{ transformOrigin: "24px 24px" }}
-            transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
-          >
-            <line
-              x1="16" y1="29" x2="32" y2="29"
-              stroke="var(--v-chalk)" strokeWidth="1.1" strokeLinecap="round"
-            />
-          </motion.g>
+            animate={{
+              opacity: isOpen ? 1 : 0,
+              pathLength: isOpen ? 1 : 0,
+            }}
+            transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+          />
         </motion.g>
       </svg>
     </button>

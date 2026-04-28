@@ -623,6 +623,27 @@ body.theme-flipping *::after {
   mix-blend-mode: var(--cursor-veil-blend);
 }
 
+/* ── Idle mercury breathing pulse — draws the eye at rest ────
+   A gentle ring that expands outward and contracts, synced to
+   the same 9s cycle as the lens rings so it feels like the
+   vessel is alive, inhaling and exhaling. */
+@keyframes mercury-breathe {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.3;
+  }
+  50% {
+    transform: scale(1.18);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lens-button::before {
+    display: none;
+  }
+}
+
 /* ── Navbar gravitational-lens menu button ─────────────────────
    Three concentric rings (inner border, tight box-shadow, wide
    box-shadow) pulse at distinct phases over a 9 s rest cycle.
