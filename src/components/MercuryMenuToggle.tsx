@@ -21,22 +21,23 @@ import type {
 } from "react";
 
 // ─────────────────────────────────────────────────────────────
-// MercuryMenuToggle  ✦  Living Liquid Metal Vessel
+// MercuryMenuToggle  ✦  Liquid Physics Vessel
 //
-// The mercury is a two-layer liquid:
-//   BASE: A dark metallic fill that holds steady — gunmetal
-//     grey, heavy, opaque. This is the body of the metal.
-//   SHIMMER: A bright specular band that sweeps diagonally
-//     across the base (bottom-right → upper-left), like a
-//     searchlight on a pool of quicksilver. The shimmer is
-//     translucent — it brightens the base where it passes.
+// A circular crucible of quicksilver driven by real momentum
+// physics. The liquid is not CSS — it is an SVG path built
+// frame-by-frame inside a requestAnimationFrame loop, with
+// spring-damper velocity, overshoot, and organic wobble.
 //
-// On hover, the BASE pours upward first (0.6s), then the
-// SHIMMER begins its slow sweep (4.0s cycle). The meniscus
-// tilts toward the cursor with heavy spring damping.
+//   BASE:    Dark metallic fill rises from the bottom as a
+//            viscous column with a wavy meniscus surface.
+//   SHIMMER: A bright horizontal band rises slowly through
+//            the liquid, catching the ripple crests.
+//   SURFACE: 3 sine waves + edge damping create the
+//            characteristic liquid metal meniscus.
+//   DEPTH:   Overlapping gradients + specular ellipses +
+//            SVG filters for glow and bloom.
 //
-// Idle: A thin silver ring pulses outward — the vessel's
-// heartbeat.
+// Idle: Silver heartbeat ring pulses outward.
 // ─────────────────────────────────────────────────────────────
 
 type Phase = "rest" | "enter" | "active" | "exit";
@@ -67,20 +68,27 @@ export default function MercuryMenuToggle({
   const isActive = phase !== "rest";
   const lensState: LensState = isOpen ? "open" : isActive ? "hover" : "rest";
 
-  // ─── Cursor tracking ─────────────────────────────────────
+  // ─── Cursor tracking (for specular position) ───────────────
   const px = useMotionValue(0.5);
   const py = useMotionValue(0.5);
   const cx = useSpring(px, { stiffness: 140, damping: 20, mass: 0.55 });
   const cy = useSpring(py, { stiffness: 140, damping: 20, mass: 0.55 });
-  const intensity = useSpring(0, { stiffness: 70, damping: 18 });
-  useEffect(() => { intensity.set(isActive ? 1 : 0); }, [isActive, intensity]);
 
-  // ─── Liquid surface tilt ───────────────────────────────
-  const surfaceTilt = useTransform(cx, [0, 0.5, 1], [-12, 0, 12]);
-  const specularX = useTransform(cx, (v) => 30 + (1 - v) * 25);
-  const specularY = useTransform(cy, (v) => 22 + (1 - v) * 18);
+  // ─── rAF Physics State ────────────────────────────────────
+  const fillRef = useRef(0);      // current fill level 0..1
+  const targetRef = useRef(0);    // target fill level
+  const velocityRef = useRef(0);  // momentum
+  const timeRef = useRef(0);      // clock for waves
+  const shimmerRef = useRef(0);   // shimmer vertical position 0..1
+  const rafRef = useRef<number>(0);
 
-  // ─── Phase timers ──────────────────────────────────────
+  // ─── React state (updated from rAF) ────────────────────────
+  const [fillLevel, setFillLevel] = useState(0);
+  const [clock, setClock] = useState(0);
+  const [shimmerPos, setShimmerPos] = useState(0);
+  const [isMoving, setIsMoving] = useState(false);
+
+  // ─── Phase timers ──────────────────────────────────────────
   const enterTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const exitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const restTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -95,11 +103,13 @@ export default function MercuryMenuToggle({
   const beginEnter = useCallback(() => {
     clearTimers();
     setPhase("enter");
+    targetRef.current = 1;
     enterTimerRef.current = setTimeout(() => { setPhase("active"); enterTimerRef.current = null; }, 500);
   }, [clearTimers]);
 
   const beginExit = useCallback(() => {
     clearTimers();
+    targetRef.current = 0;
     exitTimerRef.current = setTimeout(() => {
       setPhase("exit");
       exitTimerRef.current = null;
@@ -111,7 +121,56 @@ export default function MercuryMenuToggle({
     [exitTimerRef, restTimerRef].forEach((r) => { if (r.current) { clearTimeout(r.current); r.current = null; } });
   }, []);
 
-  // ─── Events ────────────────────────────────────────────
+  // ─── Physics rAF loop ──────────────────────────────────────
+  const animate = useCallback(() => {
+    const diff = targetRef.current - fillRef.current;
+
+    // Spring-damper liquid physics
+    const spring = 0.0018;
+    const damping = 0.92;
+    const maxVel = 0.0045;
+
+    velocityRef.current += diff * spring;
+    velocityRef.current *= damping;
+    velocityRef.current = Math.max(-maxVel, Math.min(maxVel, velocityRef.current));
+
+    fillRef.current += velocityRef.current;
+
+    // Organic wobble while in motion
+    if (Math.abs(velocityRef.current) > 0.0001) {
+      fillRef.current += Math.sin(timeRef.current * 2.2) * 0.00008 * Math.sign(velocityRef.current);
+    }
+
+    fillRef.current = Math.max(0, Math.min(1, fillRef.current));
+
+    const moving = Math.abs(velocityRef.current) > 0.00005 || Math.abs(diff) > 0.001;
+    setIsMoving(moving);
+
+    if (!moving && Math.abs(diff) < 0.001) {
+      fillRef.current = targetRef.current;
+      velocityRef.current = 0;
+    }
+
+    timeRef.current += 0.009;
+    setFillLevel(fillRef.current);
+    setClock(timeRef.current);
+
+    // Shimmer: slow rise through the liquid
+    if (fillRef.current > 0.02) {
+      shimmerRef.current += 0.0018;
+      if (shimmerRef.current > 1.15) shimmerRef.current = -0.15;
+      setShimmerPos(shimmerRef.current);
+    }
+
+    rafRef.current = requestAnimationFrame(animate);
+  }, []);
+
+  useEffect(() => {
+    rafRef.current = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(rafRef.current);
+  }, [animate]);
+
+  // ─── Event handlers ────────────────────────────────────────
   const handlePointerEnter = useCallback((e: ReactPointerEvent<HTMLButtonElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
     px.set(Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width)));
@@ -148,18 +207,134 @@ export default function MercuryMenuToggle({
 
   const handleClick = useCallback(() => { onToggle?.(!isOpen); }, [isOpen, onToggle]);
 
-  // ─── IDs ───────────────────────────────────────────────
+  // ─── Specular position (cursor-driven) ──────────────────────
+  const specX = useTransform(cx, (v) => 18 + v * 12);
+  const specY = useTransform(cy, (v) => 18 + v * 12);
+
+  // ─── Liquid Path Builder ───────────────────────────────────
+  // Builds an SVG path that fills the circle from bottom up,
+  // with a wavy meniscus surface at the top.
+  const buildLiquidPath = useCallback(() => {
+    if (fillLevel < 0.005) return "";
+
+    const bottomY = 46;
+    const topY = bottomY - fillLevel * 44;
+    const steps = 50;
+    const waveAmp = isMoving ? 2.0 + fillLevel * 1.5 : 0.8 + fillLevel * 0.5;
+    const t = clock;
+
+    let d = `M 2 ${bottomY} `;
+
+    // Left wall: UP from bottom
+    for (let i = 0; i <= steps; i++) {
+      const frac = i / steps;
+      const y = bottomY - frac * (bottomY - topY);
+      d += `L 2 ${y.toFixed(1)} `;
+    }
+
+    // Wavy top surface
+    const surfaceSteps = 60;
+    const surfacePoints: [number, number][] = [];
+    for (let i = 0; i <= surfaceSteps; i++) {
+      const frac = i / surfaceSteps;
+      const x = 2 + frac * 44;
+      const wave1 = Math.sin(frac * Math.PI * 4 + t * 1.2) * waveAmp;
+      const wave2 = Math.sin(frac * Math.PI * 7 + t * 1.9 + 1.2) * waveAmp * 0.35;
+      const wave3 = Math.sin(frac * Math.PI * 2 + t * 0.7 + 2.5) * waveAmp * 0.2;
+      const edgeDamp = Math.sin(frac * Math.PI);
+      const y = topY + (wave1 + wave2 + wave3) * edgeDamp;
+      surfacePoints.push([x, y]);
+    }
+
+    d += `L ${surfacePoints[0][0].toFixed(1)} ${surfacePoints[0][1].toFixed(1)} `;
+    for (let i = 1; i < surfacePoints.length - 1; i++) {
+      const cpx = surfacePoints[i][0];
+      const cpy = surfacePoints[i][1];
+      const nx = (surfacePoints[i][0] + surfacePoints[i + 1][0]) / 2;
+      const ny = (surfacePoints[i][1] + surfacePoints[i + 1][1]) / 2;
+      d += `Q ${cpx.toFixed(1)} ${cpy.toFixed(1)} ${nx.toFixed(1)} ${ny.toFixed(1)} `;
+    }
+    const last = surfacePoints[surfacePoints.length - 1];
+    d += `L ${last[0].toFixed(1)} ${last[1].toFixed(1)} `;
+
+    // Right wall: DOWN to bottom
+    for (let i = steps; i >= 0; i--) {
+      const frac = i / steps;
+      const y = bottomY - frac * (bottomY - topY);
+      d += `L 46 ${y.toFixed(1)} `;
+    }
+
+    d += "Z";
+    return d;
+  }, [fillLevel, isMoving, clock]);
+
+  // ─── Surface Highlight Path ────────────────────────────────
+  const buildSurfaceHighlight = useCallback(() => {
+    if (fillLevel < 0.01) return "";
+    const bottomY = 46;
+    const topY = bottomY - fillLevel * 44;
+    const t = clock;
+    const amp = isMoving ? 1.6 : 0.6;
+    let d = "";
+    const steps = 40;
+    for (let i = 0; i <= steps; i++) {
+      const frac = i / steps;
+      const x = 2 + frac * 44;
+      const wave = Math.sin(frac * Math.PI * 4 + t * 1.2 + 0.5) * amp * Math.sin(frac * Math.PI);
+      const y = topY + wave;
+      d += (i === 0 ? "M" : "L") + ` ${x.toFixed(1)} ${y.toFixed(1)} `;
+    }
+    return d;
+  }, [fillLevel, isMoving, clock]);
+
+  // ─── Shimmer Path ──────────────────────────────────────────
+  const buildShimmerPath = useCallback(() => {
+    if (fillLevel < 0.03) return null;
+    const bottomY = 46;
+    const topY = bottomY - fillLevel * 44;
+    const liquidHeight = bottomY - topY;
+    const shimmerY = bottomY - shimmerPos * liquidHeight;
+    if (shimmerY < topY - 5 || shimmerY > bottomY + 5) return null;
+    const bandHeight = 10;
+    const sy = Math.max(topY + 2, Math.min(bottomY - 2, shimmerY));
+    const topBand = sy - bandHeight / 2;
+    const botBand = sy + bandHeight / 2;
+    const d = `M 2 ${botBand.toFixed(1)} L 2 ${topBand.toFixed(1)} L 46 ${topBand.toFixed(1)} L 46 ${botBand.toFixed(1)} Z`;
+    return { d, centerY: sy };
+  }, [fillLevel, shimmerPos]);
+
+  // ─── Droplets ──────────────────────────────────────────────
+  const buildDroplets = useCallback(() => {
+    if (fillLevel < 0.08) return [];
+    const bottomY = 46;
+    const topY = bottomY - fillLevel * 44;
+    const t = clock;
+    const droplets: Array<{ cx: number; cy: number; r: number; opacity: number }> = [];
+    const count = Math.floor(fillLevel * 5) + 1;
+    for (let i = 0; i < count; i++) {
+      const seed = i * 97.3 + 13;
+      const xFrac = (Math.sin(seed) * 0.5 + 0.5);
+      const x = 4 + xFrac * 40;
+      const bobY = Math.sin(t * (0.6 + i * 0.2) + seed) * 2;
+      const y = topY + 2 + bobY;
+      droplets.push({
+        cx: x + Math.sin(t * 0.4 + seed) * 1.5,
+        cy: y,
+        r: 1.2 + Math.sin(seed * 3.1) * 0.5,
+        opacity: (0.4 + Math.sin(t * 0.8 + seed) * 0.2) * fillLevel,
+      });
+    }
+    return droplets;
+  }, [fillLevel, clock]);
+
+  const liquidPath = buildLiquidPath();
+  const surfaceHighlight = buildSurfaceHighlight();
+  const droplets = buildDroplets();
+  const shimmer = buildShimmerPath();
+
+  // ─── Stable SVG IDs ───────────────────────────────────────
   const uid = useRef(`mq-${Math.random().toString(36).slice(2, 9)}`).current;
-
-  // ─── Liquid fill clip (rises from bottom) ──────────────
-  const fillClip = useTransform(intensity, (i: number) => `inset(${Math.max(0, (1 - i) * 100)}% 0 0 0)`);
-
-  // ─── Surface path with tilt ──────────────────────────────
-  const surfacePath = useTransform<number, string>([surfaceTilt], (vals: number[]) => {
-    const tilt = vals[0];
-    const ly = 5 + tilt * 0.35, ry = 5 - tilt * 0.35, my = -1;
-    return `M 2 ${ly} Q 24 ${my} 46 ${ry}`;
-  });
+  const liquidAlpha = 0.65;
 
   return (
     <button
@@ -223,107 +398,183 @@ export default function MercuryMenuToggle({
         style={{ boxShadow: "0 0 28px 8px var(--accent-glow-soft)" }}
       />
 
-      {/* ═══ LIQUID MERCURY — TWO LAYERS ═══ */}
-      {/* The container clips the pour from bottom */}
-      <motion.div
-        className="absolute inset-[2px] rounded-full overflow-hidden"
-        initial={false}
-        animate={{ opacity: isActive ? 1 : 0 }}
-        transition={{ duration: 0.12 }}
-        style={{ clipPath: fillClip }}
-      >
-        <motion.div
-          initial={false}
-          animate={{ y: isActive ? 0 : 10 }}
-          transition={
-            phase === "enter"
-              ? { duration: 0.80, delay: 0.02, ease: [0.22, 1, 0.36, 1] }
-              : phase === "exit"
-              ? { duration: 0.38, ease: [0.4, 0, 0.6, 1] }
-              : { duration: 0.18 }
-          }
-          className="absolute inset-0"
-        >
-          {/* ── LAYER 1: BASE FILL — dark metallic mercury ──
-             This is the body of the metal. Steady, heavy,
-             gunmetal grey with a hint of blue. Always visible
-             when the vessel is full. */}
-          <div
-            className="absolute inset-0"
-            style={{
-              background: "linear-gradient(160deg, #1a1a24 0%, #13131c 30%, #0e0e16 60%, #0a0a12 100%)",
-            }}
-          />
-
-          {/* ── LAYER 2: SHIMMER — moving specular highlight ──
-             A translucent bright band that sweeps diagonally
-             across the base, giving the metal life. The shimmer
-             is semi-transparent so the base shows through. */}
-          <div
-            className="mercury-shimmer-layer absolute inset-[-30%]"
-            style={{
-              borderRadius: "50%",
-              background: "linear-gradient(135deg, transparent 0%, transparent 30%, rgba(180,180,200,0.15) 40%, rgba(220,220,235,0.35) 48%, rgba(255,255,255,0.55) 52%, rgba(220,220,235,0.30) 56%, rgba(180,180,200,0.12) 64%, transparent 72%, transparent 100%)",
-              backgroundSize: "300% 300%",
-              mixBlendMode: "soft-light",
-            }}
-          />
-
-          {/* ── LAYER 3: SECONDARY SHIMMER ──
-             A fainter, offset shimmer that moves at a different
-             speed, creating depth in the liquid. */}
-          <div
-            className="mercury-shimmer-secondary absolute inset-[-20%]"
-            style={{
-              borderRadius: "50%",
-              background: "linear-gradient(145deg, transparent 0%, transparent 25%, rgba(160,160,180,0.08) 38%, rgba(200,200,218,0.20) 45%, rgba(240,240,248,0.35) 50%, rgba(200,200,218,0.18) 55%, rgba(160,160,180,0.06) 62%, transparent 75%, transparent 100%)",
-              backgroundSize: "300% 300%",
-              mixBlendMode: "overlay",
-            }}
-          />
-        </motion.div>
-      </motion.div>
-
-      {/* ═══ RIPPLE OVERLAY (SVG) ═══ */}
+      {/* ═══ LIQUID MERCURY VESSEL (SVG with rAF physics) ═══ */}
       <svg
         viewBox="0 0 48 48"
         className="absolute inset-[2px] h-[calc(100%-4px)] w-[calc(100%-4px)] overflow-hidden rounded-full"
         preserveAspectRatio="xMidYMid slice"
         aria-hidden="true"
-        style={{ pointerEvents: "none" }}
       >
         <defs>
-          <radialGradient id={`mq-spec-${uid}`} cx="30%" cy="25%" r="35%">
-            <stop offset="0%" stopColor="rgba(255,255,255,0.85)" />
-            <stop offset="25%" stopColor="rgba(240,240,250,0.30)" />
-            <stop offset="60%" stopColor="rgba(220,220,234,0.05)" />
-            <stop offset="100%" stopColor="rgba(220,220,234,0)" />
+          {/* Clip to circle */}
+          <clipPath id={`mq-clip-${uid}`}>
+            <circle cx="24" cy="24" r="22" />
+          </clipPath>
+
+          {/* Main mercury body gradient */}
+          <linearGradient id={`mq-body-${uid}`} x1="20%" y1="100%" x2="80%" y2="0%">
+            <stop offset="0%" stopColor="#3a3a48" />
+            <stop offset="15%" stopColor="#5a5a6e" />
+            <stop offset="30%" stopColor="#8a8aa0" />
+            <stop offset="45%" stopColor="#b8b8cc" />
+            <stop offset="60%" stopColor="#d8d8e8" />
+            <stop offset="75%" stopColor="#c0c0d4" />
+            <stop offset="90%" stopColor="#e4e4f0" />
+            <stop offset="100%" stopColor="#f0f0fa" />
+          </linearGradient>
+
+          {/* Deep shadow layer */}
+          <linearGradient id={`mq-deep-${uid}`} x1="0%" y1="100%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor="#1a1a2e" />
+            <stop offset="20%" stopColor="#2e2e44" />
+            <stop offset="40%" stopColor="#4a4a66" />
+            <stop offset="60%" stopColor="#7a7a98" />
+            <stop offset="80%" stopColor="#a8a8c4" />
+            <stop offset="100%" stopColor="#d0d0e4" />
+          </linearGradient>
+
+          {/* Specular highlight */}
+          <radialGradient id={`mq-spec-${uid}`} cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor="#ffffff" stopOpacity="0.95" />
+            <stop offset="30%" stopColor="#e8e8f8" stopOpacity="0.6" />
+            <stop offset="60%" stopColor="#b0b0cc" stopOpacity="0.2" />
+            <stop offset="100%" stopColor="#686880" stopOpacity="0" />
           </radialGradient>
+
+          {/* Cool secondary reflection */}
+          <radialGradient id={`mq-spec-cool-${uid}`} cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor="#c8c8e8" stopOpacity="0.5" />
+            <stop offset="40%" stopColor="#9090b0" stopOpacity="0.2" />
+            <stop offset="100%" stopColor="#50506a" stopOpacity="0" />
+          </radialGradient>
+
+          {/* Shimmer gradient */}
+          <linearGradient id={`mq-shimmer-${uid}`} x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stopColor="#e0e0f0" stopOpacity="0" />
+            <stop offset="25%" stopColor="#e8e8f8" stopOpacity="0.6" />
+            <stop offset="50%" stopColor="#f4f4ff" stopOpacity="0.9" />
+            <stop offset="75%" stopColor="#e8e8f8" stopOpacity="0.6" />
+            <stop offset="100%" stopColor="#e0e0f0" stopOpacity="0" />
+          </linearGradient>
+
+          {/* Droplet gradient */}
+          <radialGradient id={`mq-drop-${uid}`} cx="35%" cy="30%" r="65%">
+            <stop offset="0%" stopColor="#ffffff" stopOpacity="0.9" />
+            <stop offset="25%" stopColor="#d8d8ec" stopOpacity="0.7" />
+            <stop offset="60%" stopColor="#8888a4" stopOpacity="0.5" />
+            <stop offset="100%" stopColor="#3a3a50" stopOpacity="0.3" />
+          </radialGradient>
+
+          {/* Surface meniscus gradient */}
+          <linearGradient id={`mq-surface-${uid}`} x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor="#a0a0b8" />
+            <stop offset="15%" stopColor="#d0d0e4" />
+            <stop offset="30%" stopColor="#f0f0ff" />
+            <stop offset="50%" stopColor="#ffffff" />
+            <stop offset="70%" stopColor="#f0f0ff" />
+            <stop offset="85%" stopColor="#d0d0e4" />
+            <stop offset="100%" stopColor="#a0a0b8" />
+          </linearGradient>
+
+          {/* Glow filter */}
+          <filter id={`mq-glow-${uid}`} x="-15%" y="-15%" width="130%" height="130%">
+            <feGaussianBlur in="SourceAlpha" stdDeviation="2" result="b" />
+            <feFlood floodColor="#b0b0d0" floodOpacity={fillLevel > 0.1 ? 0.35 : 0} result="c" />
+            <feComposite in="c" in2="b" operator="in" result="g" />
+            <feMerge>
+              <feMergeNode in="g" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+
+          {/* Specular bloom */}
+          <filter id={`mq-bloom-${uid}`} x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="2" result="b" />
+            <feMerge>
+              <feMergeNode in="b" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+
+          {/* Shimmer blur */}
+          <filter id={`mq-shimmer-blur-${uid}`} x="-20%" y="-10%" width="140%" height="120%">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="1.5" result="b" />
+            <feMerge>
+              <feMergeNode in="b" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+
+          {/* Soft blur */}
+          <filter id={`mq-soft-${uid}`}>
+            <feGaussianBlur stdDeviation="0.2" />
+          </filter>
         </defs>
 
-        {/* Ripple rings */}
-        {isActive && (
-          <g className="mercury-ripples" opacity="0.5">
-            <circle cx="24" cy="24" r="5" fill="none" stroke="rgba(255,255,255,0.20)" strokeWidth="0.4" />
-            <circle cx="24" cy="24" r="9" fill="none" stroke="rgba(255,255,255,0.14)" strokeWidth="0.35" />
-            <circle cx="24" cy="24" r="13" fill="none" stroke="rgba(255,255,255,0.10)" strokeWidth="0.3" />
-            <circle cx="24" cy="24" r="17" fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth="0.3" />
-            <circle cx="24" cy="24" r="21" fill="none" stroke="rgba(200,200,212,0.08)" strokeWidth="0.25" />
+        {/* Ghost at rest */}
+        {phase === "rest" && (
+          <g className="lens-ghost">
+            <circle cx="24" cy="24" r="19" fill="var(--v-smoke)" fillOpacity="0.10" />
           </g>
         )}
 
-        {/* Meniscus */}
-        {isActive && (
-          <motion.path
-            fill="none"
-            stroke="rgba(180,180,195,0.45)"
-            strokeWidth="0.9"
-            initial={false}
-            animate={{ d: surfacePath.get() }}
-            transition={{ duration: 0.06 }}
-            style={{ rotate: surfaceTilt, transformOrigin: "24px 4px" }}
-          />
-        )}
+        {/* Liquid body (clipped to circle) */}
+        <g clipPath={`url(#mq-clip-${uid})`}>
+          {liquidPath && (
+            <g filter={fillLevel > 0.08 ? `url(#mq-glow-${uid})` : undefined}>
+              {/* Deep shadow */}
+              <path d={liquidPath} fill={`url(#mq-deep-${uid})`} opacity={liquidAlpha * 0.6} />
+              {/* Main body */}
+              <path d={liquidPath} fill={`url(#mq-body-${uid})`} opacity={liquidAlpha} />
+              {/* Primary specular */}
+              {fillLevel > 0.12 && (
+                <motion.ellipse
+                  cx={specX as MotionValue<number>}
+                  cy={specY as MotionValue<number>}
+                  rx={12 + fillLevel * 6}
+                  ry={8 + fillLevel * 5}
+                  fill={`url(#mq-spec-${uid})`}
+                  opacity={0.55}
+                  filter={`url(#mq-bloom-${uid})`}
+                />
+              )}
+              {/* Cool secondary reflection */}
+              {fillLevel > 0.2 && (
+                <ellipse
+                  cx={24 + 6}
+                  cy={24 - 6}
+                  rx={8}
+                  ry={6}
+                  fill={`url(#mq-spec-cool-${uid})`}
+                  opacity={0.3}
+                />
+              )}
+              {/* Shimmer band */}
+              {shimmer && fillLevel > 0.03 && (
+                <path
+                  d={shimmer.d}
+                  fill={`url(#mq-shimmer-${uid})`}
+                  opacity={liquidAlpha * 0.7}
+                  filter={`url(#mq-shimmer-blur-${uid})`}
+                />
+              )}
+            </g>
+          )}
+
+          {/* Surface highlight (meniscus) */}
+          {surfaceHighlight && (
+            <>
+              <path d={surfaceHighlight} fill="none" stroke="#d8d8f0" strokeWidth="5" strokeLinecap="round" opacity={0.12 * fillLevel} />
+              <path d={surfaceHighlight} fill="none" stroke={`url(#mq-surface-${uid})`} strokeWidth="2" strokeLinecap="round" opacity={0.85 * fillLevel} />
+              <path d={surfaceHighlight} fill="none" stroke="#ffffff" strokeWidth="0.7" strokeLinecap="round" opacity={0.45 * fillLevel} />
+            </>
+          )}
+
+          {/* Droplets */}
+          {droplets.map((d, i) => (
+            <circle key={`drop-${i}`} cx={d.cx} cy={d.cy} r={d.r} fill={`url(#mq-drop-${uid})`} opacity={d.opacity} />
+          ))}
+        </g>
 
         {/* Inner rim */}
         <circle cx="24" cy="24" r="21" fill="none" stroke="var(--v-smoke)" strokeWidth="0.5" strokeOpacity="0.22" />
