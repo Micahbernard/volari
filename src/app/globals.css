@@ -647,48 +647,22 @@ body.theme-flipping *::after {
   }
 }
 
-/* ── Mercury liquid — the flowing metal body ─
-   A CSS linear-gradient with animated background-position.
-   A bright specular band sweeps diagonally across the surface
-   (bottom-right → upper-left), creating the illusion of
-   light playing across moving liquid metal. This is NOT a
-   static image — the gradient pixels are in continuous motion. */
-.mercury-liquid {
-  background: transparent;
-}
+/* ── Mercury liquid — two-layer flowing metal ─
+   BASE: A dark metallic fill (gunmetal grey) that holds
+     steady inside the vessel — the body of the metal.
+   SHIMMER: A translucent bright band that sweeps diagonally
+     across the base (bottom-right → upper-left → back), like
+     light on a pool of quicksilver. The shimmer is slow,
+     viscous — 4.0s cycle — so the mercury feels heavy.
+   SECONDARY: A fainter, offset shimmer at different speed
+     (5.5s) creating depth — surface + subsurface reflections. */
 
-.mercury-shimmer {
-  width: 140%;
-  height: 140%;
-  top: -20%;
-  left: -20%;
-  position: absolute;
-  border-radius: 50%;
-  background: linear-gradient(
-    135deg,
-    #08080c 0%,
-    #151520 12%,
-    #2a2a38 22%,
-    #4a4a5a 30%,
-    #7a7a8e 36%,
-    #b0b0c0 40%,
-    #ffffff 44%,
-    #e8e8f0 46%,
-    #8a8a9e 50%,
-    #3a3a48 58%,
-    #1a1a26 68%,
-    #0c0c14 80%,
-    #050508 100%
-  );
-  background-size: 300% 300%;
-  animation: mercury-sweep 2.2s ease-in-out infinite;
-}
-
-/* ── Mercury sweep — diagonal shimmer across liquid ─
-   The bright band travels from bottom-right to upper-left,
-   then reverses. This creates the living liquid metal feel.
-   Only runs when the mercury-liquid container is hovered/active. */
-@keyframes mercury-sweep {
+/* ── Primary shimmer — slow diagonal sweep ─
+   The main specular band. 4.0s cycle — unhurried, viscous,
+   like heavy mercury responding to a slow-moving light source.
+   The band is narrow and bright at its peak, fading to
+   transparency at its edges so the base always shows through. */
+@keyframes mercury-shimmer-sweep {
   0% {
     background-position: 100% 100%;
   }
@@ -700,25 +674,34 @@ body.theme-flipping *::after {
   }
 }
 
-/* ── Mercury alive — subtle scale breathing on the shimmer ─
-   Adds a gentle pulse to the liquid so it doesn't just slide
-   but also breathes — like mercury expanding and contracting
-   under surface tension. */
-@keyframes mercury-alive {
-  0%, 100% {
-    transform: scale(1);
+.mercury-shimmer-layer {
+  animation: mercury-shimmer-sweep 4.0s ease-in-out infinite;
+}
+
+/* ── Secondary shimmer — offset, slower ─
+   A fainter band that moves at a different phase and speed,
+   creating depth — the liquid has layers, like real metal
+   with surface and subsurface reflections. */
+@keyframes mercury-shimmer-secondary {
+  0% {
+    background-position: 0% 100%;
   }
   50% {
-    transform: scale(1.04);
+    background-position: 100% 0%;
+  }
+  100% {
+    background-position: 0% 100%;
   }
 }
 
-.mercury-shimmer {
-  animation: mercury-sweep 2.2s ease-in-out infinite, mercury-alive 3.5s ease-in-out infinite;
+.mercury-shimmer-secondary {
+  animation: mercury-shimmer-secondary 5.5s ease-in-out infinite;
+  opacity: 0.7;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .mercury-shimmer {
+  .mercury-shimmer-layer,
+  .mercury-shimmer-secondary {
     animation: none !important;
   }
 }

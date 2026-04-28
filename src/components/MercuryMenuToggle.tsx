@@ -21,21 +21,22 @@ import type {
 } from "react";
 
 // ─────────────────────────────────────────────────────────────
-// MercuryMenuToggle  ✦  Living Liquid Metal
+// MercuryMenuToggle  ✦  Living Liquid Metal Vessel
 //
-// The mercury is NOT a static gradient. It is a field of
-// flowing metal — a CSS background with animated position
-// that sends a bright specular band sweeping diagonally
-// across the surface (bottom-right → upper-left), like light
-// playing across a pool of quicksilver.
+// The mercury is a two-layer liquid:
+//   BASE: A dark metallic fill that holds steady — gunmetal
+//     grey, heavy, opaque. This is the body of the metal.
+//   SHIMMER: A bright specular band that sweeps diagonally
+//     across the base (bottom-right → upper-left), like a
+//     searchlight on a pool of quicksilver. The shimmer is
+//     translucent — it brightens the base where it passes.
 //
-// On hover the liquid pours upward from the base, flooding
-// the vessel as a viscous column. Inside, the shimmer runs
-// continuously. The meniscus tilts toward the cursor — the
-// metal has weight and inertia.
+// On hover, the BASE pours upward first (0.6s), then the
+// SHIMMER begins its slow sweep (4.0s cycle). The meniscus
+// tilts toward the cursor with heavy spring damping.
 //
 // Idle: A thin silver ring pulses outward — the vessel's
-// heartbeat calling for interaction.
+// heartbeat.
 // ─────────────────────────────────────────────────────────────
 
 type Phase = "rest" | "enter" | "active" | "exit";
@@ -222,20 +223,18 @@ export default function MercuryMenuToggle({
         style={{ boxShadow: "0 0 28px 8px var(--accent-glow-soft)" }}
       />
 
-      {/* ═══ LIQUID MERCURY BODY (div with animated gradient) ═══ */}
+      {/* ═══ LIQUID MERCURY — TWO LAYERS ═══ */}
+      {/* The container clips the pour from bottom */}
       <motion.div
-        className="absolute inset-[2px] rounded-full overflow-hidden mercury-liquid"
+        className="absolute inset-[2px] rounded-full overflow-hidden"
         initial={false}
         animate={{ opacity: isActive ? 1 : 0 }}
         transition={{ duration: 0.12 }}
-        style={{
-          clipPath: fillClip,
-        }}
+        style={{ clipPath: fillClip }}
       >
         <motion.div
-          className="absolute inset-[-20%] mercury-shimmer"
           initial={false}
-          animate={{ y: isActive ? 0 : 12 }}
+          animate={{ y: isActive ? 0 : 10 }}
           transition={
             phase === "enter"
               ? { duration: 0.80, delay: 0.02, ease: [0.22, 1, 0.36, 1] }
@@ -243,10 +242,49 @@ export default function MercuryMenuToggle({
               ? { duration: 0.38, ease: [0.4, 0, 0.6, 1] }
               : { duration: 0.18 }
           }
-        />
+          className="absolute inset-0"
+        >
+          {/* ── LAYER 1: BASE FILL — dark metallic mercury ──
+             This is the body of the metal. Steady, heavy,
+             gunmetal grey with a hint of blue. Always visible
+             when the vessel is full. */}
+          <div
+            className="absolute inset-0"
+            style={{
+              background: "linear-gradient(160deg, #1a1a24 0%, #13131c 30%, #0e0e16 60%, #0a0a12 100%)",
+            }}
+          />
+
+          {/* ── LAYER 2: SHIMMER — moving specular highlight ──
+             A translucent bright band that sweeps diagonally
+             across the base, giving the metal life. The shimmer
+             is semi-transparent so the base shows through. */}
+          <div
+            className="mercury-shimmer-layer absolute inset-[-30%]"
+            style={{
+              borderRadius: "50%",
+              background: "linear-gradient(135deg, transparent 0%, transparent 30%, rgba(180,180,200,0.15) 40%, rgba(220,220,235,0.35) 48%, rgba(255,255,255,0.55) 52%, rgba(220,220,235,0.30) 56%, rgba(180,180,200,0.12) 64%, transparent 72%, transparent 100%)",
+              backgroundSize: "300% 300%",
+              mixBlendMode: "soft-light",
+            }}
+          />
+
+          {/* ── LAYER 3: SECONDARY SHIMMER ──
+             A fainter, offset shimmer that moves at a different
+             speed, creating depth in the liquid. */}
+          <div
+            className="mercury-shimmer-secondary absolute inset-[-20%]"
+            style={{
+              borderRadius: "50%",
+              background: "linear-gradient(145deg, transparent 0%, transparent 25%, rgba(160,160,180,0.08) 38%, rgba(200,200,218,0.20) 45%, rgba(240,240,248,0.35) 50%, rgba(200,200,218,0.18) 55%, rgba(160,160,180,0.06) 62%, transparent 75%, transparent 100%)",
+              backgroundSize: "300% 300%",
+              mixBlendMode: "overlay",
+            }}
+          />
+        </motion.div>
       </motion.div>
 
-      {/* ═══ RIPPLE OVERLAY (SVG, on top of liquid) ═══ */}
+      {/* ═══ RIPPLE OVERLAY (SVG) ═══ */}
       <svg
         viewBox="0 0 48 48"
         className="absolute inset-[2px] h-[calc(100%-4px)] w-[calc(100%-4px)] overflow-hidden rounded-full"
@@ -263,7 +301,7 @@ export default function MercuryMenuToggle({
           </radialGradient>
         </defs>
 
-        {/* Ripple rings — only when active */}
+        {/* Ripple rings */}
         {isActive && (
           <g className="mercury-ripples" opacity="0.5">
             <circle cx="24" cy="24" r="5" fill="none" stroke="rgba(255,255,255,0.20)" strokeWidth="0.4" />
@@ -274,7 +312,7 @@ export default function MercuryMenuToggle({
           </g>
         )}
 
-        {/* Meniscus surface line */}
+        {/* Meniscus */}
         {isActive && (
           <motion.path
             fill="none"
