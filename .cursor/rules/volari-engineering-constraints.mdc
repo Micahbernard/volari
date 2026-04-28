@@ -1,0 +1,111 @@
+---
+description: Volari site — mandatory animation, WebGL, and code-quality constraints
+globs: volari-site/**/*
+alwaysApply: true
+---
+
+# Volari — Engineering constraints (always follow)
+
+These rules apply to all work under `volari-site/`. Do not ship code that contradicts them without explicit user approval.
+
+## 1. Animation and interaction
+
+### No bouncy / default spring physics
+
+- Do **not** use Framer Motion **spring** presets or physics that feel elastic or bouncy.
+- Motion must feel **viscous, heavy, and cinematic**. Prefer custom easing and longer durations over snappy defaults.
+
+### GSAP easing and timing
+
+- Use **slow, deliberate** easings: `power3.inOut`, `power4.out`, `expo.out`, or explicit **cubic-bezier** curves — not linear or abrupt cuts unless intentional.
+- Default transition durations should be **longer than typical web defaults**, typically **~0.8s–1.5s** for section-scale motion unless a micro-interaction needs a shorter window (see exceptions).
+
+### Entrance behavior
+
+- Avoid the pattern: every element **only** `translateY` + `opacity` at the same time with no structure.
+- Prefer **GSAP staggers**, **split timelines**, and **masked reveals**:
+  - **Clip-path** reveals (e.g. `inset`, or `polygon` wipes), or
+  - **Per-character / per-word** reveals with overflow hidden on lines.
+- Text reveals should feel **sequenced or masked**, not a single simultaneous fade.
+
+### Hover
+
+- Hovers must **not** feel instant. Prefer a short **anticipation** (“wind-up”) and a **long, smooth decay** on exit (still using cinematic easings, not springs).
+
+### Exceptions (allowed short motion)
+
+- **Pointer / cursor follow** feedback may use shorter durations so tracking stays tight.
+- **Tiny UI affordances** (e.g. 1px lines) may be shorter if they stay ease-controlled and non-bouncy.
+
+## 2. Framer Motion (when used)
+
+- Framer Motion is allowed for **presence** / layout wrappers (e.g. `AnimatePresence`) but **must not** introduce spring-based motion profiles.
+- Prefer the same **easing and duration** discipline as GSAP: custom cubic-bezier or named eases, **≥ ~0.8s** for primary entrances unless the transition is a deliberate micro-flourish.
+
+## 3. WebGL and React Three Fiber
+
+### Canvas placement
+
+- The R3F `<Canvas>` must be **global and fixed**, **behind** all page content (`z-index: -1` or equivalent), with **`pointer-events: none`** on the wrapper unless a specific interaction is required.
+- Do **not** mount/unmount the canvas on **client-side route changes** in a way that destroys GL context without a strong reason.
+
+### Shaders
+
+- **Optimize GLSL**: move work out of the fragment shader **main** loop when it can run per-vertex or once per frame in uniforms.
+- Keep fragment cost predictable; avoid unbounded loops and redundant noise samples.
+
+### Geometry
+
+- Prefer **low-poly** meshes; lean on **shader math** rather than extreme vertex counts.
+- Target smooth **~60fps** on mid-range mobile; reduce DPR or complexity before shipping jank.
+
+## 4. Code quality and Tailwind
+
+### Components
+
+- Split **large sections** (hero, showcases, grids) into **small, single-purpose** components with clear boundaries.
+
+### Styling
+
+- Prefer **Tailwind utilities** for static styling.
+- **Avoid inline `style={}`** except for **dynamic GSAP** values (transforms, clip-path, will-change) or values that truly cannot be expressed in utilities.
+- For **repeated** patterns, use **`@apply` in CSS** or **shared React components**, not copy-pasted class blobs.
+
+### Documentation
+
+- When adding motion or shaders, a **one-line comment** pointing to this rule file is welcome; do not duplicate the full spec in code.
+
+## 5. Required Cursor skills (read for better results)
+
+Before implementing or refactoring under `volari-site/`, **read the relevant `SKILL.md` files** from your local Cursor skills library (`~/.cursor/skills/<skill-name>/SKILL.md` on macOS/Linux, or `%USERPROFILE%\.cursor\skills\<skill-name>\SKILL.md` on Windows). **Do not skip** when the task matches the scope below.
+
+### Frontend UI and React (always)
+
+For **any** page, layout, component, styling, or UX work in this project, read **both**:
+
+| Skill | Purpose |
+|-------|---------|
+| `frontend-developer` | React/Next patterns, components, performance, architecture |
+| `frontend-design` | UI craft, layout, typography, cohesive visual decisions |
+
+### WebGL, Three.js, R3F, and shaders (when touching GL or 3D)
+
+Whenever you work on **`WebGLBackground`**, **GLSL** (`.glsl` / shader strings), **React Three Fiber**, **Three.js** APIs, or **3D interaction** on the site, read **`threejs-skills`** first (it routes umbrella topics). For **non-trivial** shader or R3F work (new passes, new uniforms, interaction, perf changes), review **every** skill in the table below so nothing relevant is missed. For a **minimal** change (e.g. a single constant), at minimum read **`shader-programming-glsl`** and **`threejs-shaders`** (plus **`threejs-fundamentals`** if scene/camera is touched):
+
+| Skill | Purpose |
+|-------|---------|
+| `3d-web-experience` | When 3D should enhance UX vs distract; performance and accessibility |
+| `shader-programming-glsl` | GLSL patterns, uniforms, fragment vs vertex discipline |
+| `threejs-skills` | Entry/orchestration across Three.js topics |
+| `threejs-fundamentals` | Scene, camera, renderer, core concepts |
+| `threejs-shaders` | ShaderMaterial, materials pipeline |
+| `threejs-geometry` | Meshes, buffers, low-poly discipline |
+| `threejs-materials` | Materials and shading |
+| `threejs-animation` | Animation loops, timing with Three |
+| `threejs-interaction` | Raycasting, pointers (if interaction is added) |
+| `threejs-lighting` | Lights when relevant |
+| `threejs-loaders` | Asset loading when relevant |
+| `threejs-postprocessing` | Post stack when relevant |
+| `threejs-textures` | Textures when relevant |
+
+**Rule of thumb:** shader-only edits → at least `shader-programming-glsl` + `threejs-shaders` + `threejs-fundamentals`. Full-screen R3F canvas → also `3d-web-experience` + `threejs-skills`. Prefer reading **before** writing code, not after.
