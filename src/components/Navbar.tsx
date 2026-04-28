@@ -1,12 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useLenis } from "@/providers/SmoothScrollProvider";
 import { useTheme } from "@/providers/ThemeProvider";
 import NavMenuOverlay from "@/components/NavMenuOverlay";
+import MercuryMenuToggle from "@/components/MercuryMenuToggle";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -26,7 +27,6 @@ export default function Navbar() {
   const logoRef = useRef<HTMLDivElement>(null);
   const menuTriggerRef = useRef<HTMLButtonElement>(null);
   const ruleRef = useRef<HTMLDivElement>(null);
-  const dotRef = useRef<HTMLSpanElement>(null);
   const menuOpenRef = useRef(menuOpen);
 
   useEffect(() => {
@@ -38,10 +38,6 @@ export default function Navbar() {
     if (menuOpen) lenis.stop();
     else lenis.start();
   }, [lenis, menuOpen]);
-
-  const openMenu = useCallback(() => {
-    setMenuOpen(true);
-  }, []);
 
   useEffect(() => {
     const nav = navRef.current;
@@ -238,69 +234,21 @@ export default function Navbar() {
             </Link>
           </div>
 
-          {/* Decanter — ring glass vessel; hover pours warm gold liquid
-              with animated meniscus (two offset sine layers), rising bubbles,
-              and inverts the center dot when submerged. */}
-          <button
+          {/* Mercury menu toggle — silver/chrome liquid-fill chip.
+              Replaces the gold decanter. Cool palette only (no warm
+              tones), hairline border, mercury bath rises from below
+              on hover with breathing meniscus + sub-pixel grain.
+              Hamburger ↔ ✕ morph keyed off menuOpen. The trigger only
+              opens; close happens from inside <NavMenuOverlay /> while
+              the navbar is hidden behind it. */}
+          <MercuryMenuToggle
             ref={menuTriggerRef}
-            type="button"
-            onClick={openMenu}
-            aria-expanded={menuOpen}
+            isOpen={menuOpen}
+            onToggle={() => setMenuOpen(true)}
             aria-controls="site-menu"
             data-cursor-label="Menu"
-            className="group relative flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-v-smoke/45 opacity-0 outline-none transition-[border-color,box-shadow] duration-500 focus-visible:ring-2 focus-visible:ring-v-accent/50 group-hover:border-v-accent/60 hover:border-v-accent/60 hover:shadow-[0_0_24px_var(--accent-glow-soft)]"
-          >
-            {/* Liquid chamber — clipped to circle, liquid rises from bottom on hover */}
-            <span
-              aria-hidden
-              className="pointer-events-none absolute inset-0 overflow-hidden rounded-full"
-            >
-              {/* Liquid body — translates up on hover to half-fill vessel */}
-              <span className="absolute inset-0 translate-y-full transition-transform duration-[900ms] ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:translate-y-1/2">
-                {/* Gold body with vertical depth gradient */}
-                <span className="absolute inset-0 bg-gradient-to-b from-v-accent/85 via-v-accent to-[var(--decanter-bottom)]" />
-
-                {/* Meniscus — primary wave layer */}
-                <svg
-                  viewBox="0 0 200 20"
-                  preserveAspectRatio="none"
-                  className="absolute -top-[9px] left-0 h-5 w-[200%] animate-[decanter-wave-shift_3s_linear_infinite] text-v-accent"
-                >
-                  <path
-                    d="M0,10 C25,2 50,18 75,10 C100,2 125,18 150,10 C175,2 200,18 200,10 L200,20 L0,20 Z"
-                    fill="currentColor"
-                  />
-                </svg>
-                {/* Meniscus — secondary offset wave (lighter, slower) */}
-                <svg
-                  viewBox="0 0 200 20"
-                  preserveAspectRatio="none"
-                  className="absolute -top-[7px] left-0 h-5 w-[200%] animate-[decanter-wave-shift-alt_4.5s_linear_infinite] text-v-accent opacity-60"
-                >
-                  <path
-                    d="M0,10 C30,16 60,4 100,10 C140,16 170,4 200,10 L200,20 L0,20 Z"
-                    fill="currentColor"
-                  />
-                </svg>
-
-                {/* Surface highlight — refraction skim */}
-                <span className="absolute top-[1px] right-3 left-3 h-px bg-v-chalk/50" />
-
-                {/* Rising bubbles */}
-                <span className="absolute bottom-1 left-[12px] h-[2px] w-[2px] rounded-full bg-v-chalk/80 opacity-0 group-hover:animate-[decanter-bubble_2.2s_ease-in-out_infinite]" />
-                <span className="absolute right-[14px] bottom-0 h-[2px] w-[2px] rounded-full bg-v-chalk/65 opacity-0 [animation-delay:0.8s] group-hover:animate-[decanter-bubble_2.6s_ease-in-out_infinite]" />
-                <span className="absolute bottom-2 left-1/2 h-[1.5px] w-[1.5px] rounded-full bg-v-chalk/60 opacity-0 [animation-delay:1.4s] group-hover:animate-[decanter-bubble_2.4s_ease-in-out_infinite]" />
-              </span>
-            </span>
-
-            {/* Center dot — rests on the meniscus (half submerged at fill level) */}
-            <span
-              ref={dotRef}
-              aria-hidden
-              className="relative h-2 w-2 rounded-full bg-v-chalk shadow-[0_0_12px_var(--chalk-dot-halo)] transition-[box-shadow] duration-500 group-hover:shadow-[0_0_14px_var(--chalk-dot-halo-hover)]"
-            />
-            <span className="sr-only">Open menu</span>
-          </button>
+            className="opacity-0"
+          />
         </div>
 
         <div

@@ -623,17 +623,116 @@ body.theme-flipping *::after {
   mix-blend-mode: var(--cursor-veil-blend);
 }
 
-/* ── Navbar decanter (liquid fill menu button) ── */
-@keyframes decanter-wave-shift {
-  0% { transform: translateX(0); }
-  100% { transform: translateX(-50%); }
+/* ── Navbar gravitational-lens menu button ─────────────────────
+   Three concentric rings (inner border, tight box-shadow, wide
+   box-shadow) pulse at distinct phases over a 9 s rest cycle.
+   Cycle is shortened to 5 s on hover and 3.5 s while the menu
+   is open, via data-state-keyed `[animation-duration:…]`
+   utilities on the button itself.
+
+   Two convergence moments per cycle:
+     ~40 % — major: inner border at peak; mid is in mid-decay
+             glow; outer is rising into its solo peak. All three
+             rings contribute brightness simultaneously, reading
+             as a "gravitational alignment" pulse.
+     ~82 % — minor: inner border + mid co-peak; outer collapses.
+
+   Between convergences the rings drift apart at different rates,
+   producing visible lensing distortion around the mercury core.
+   ────────────────────────────────────────────────────────────── */
+@keyframes lens-border-pulse {
+  0%, 100% { border-color: rgba(55, 55, 62, 0.2); }
+  40%      { border-color: rgba(185, 185, 192, 0.5); }
+  60%      { border-color: rgba(55, 55, 62, 0.2); }
+  82%      { border-color: rgba(185, 185, 192, 0.5); }
 }
-@keyframes decanter-wave-shift-alt {
-  0% { transform: translateX(-50%); }
-  100% { transform: translateX(0); }
+
+/* Two shadow layers in one declaration — CSS interpolates each
+   layer's colour independently across keyframes as long as the
+   structure (count + offsets + spread) stays identical. The
+   tight ring (8px / 2px) carries the mid-phase peaks; the wide
+   ring (22px / 6px) carries the outer solo peak. */
+@keyframes lens-shadow-pulse {
+  0%, 100% {
+    box-shadow:
+      0 0 8px  2px rgba(55, 55, 62, 0.15),
+      0 0 22px 6px rgba(55, 55, 62, 0.10);
+  }
+  20% {
+    /* mid PEAK — first phase; outer still dim. */
+    box-shadow:
+      0 0 8px  2px rgba(185, 185, 192, 0.35),
+      0 0 22px 6px rgba(55, 55, 62, 0.10);
+  }
+  40% {
+    /* major convergence — both rings glow partial; inner
+       simultaneously peaks via lens-border-pulse. */
+    box-shadow:
+      0 0 8px  2px rgba(110, 110, 118, 0.22),
+      0 0 22px 6px rgba(150, 150, 158, 0.20);
+  }
+  70% {
+    /* outer SOLO peak — widest ring brightest, others fade. */
+    box-shadow:
+      0 0 8px  2px rgba(55, 55, 62, 0.15),
+      0 0 22px 6px rgba(185, 185, 192, 0.28);
+  }
+  82% {
+    /* minor convergence — mid PEAK again, with inner border at
+       its second peak; outer collapses. */
+    box-shadow:
+      0 0 8px  2px rgba(185, 185, 192, 0.35),
+      0 0 22px 6px rgba(55, 55, 62, 0.10);
+  }
 }
-@keyframes decanter-bubble {
-  0%   { transform: translateY(0) scale(0.6); opacity: 0; }
-  15%  { opacity: 0.9; }
-  100% { transform: translateY(-34px) scale(1); opacity: 0; }
+
+/* Reduced-motion fallback — rings stay visible at static
+   mid-brightness so the lens silhouette is preserved; no pulse.
+   Users with vestibular sensitivity still see the editorial
+   chrome chip, not a flat black square. */
+@media (prefers-reduced-motion: reduce) {
+  .lens-button {
+    animation: none !important;
+    border-color: rgba(120, 120, 128, 0.35) !important;
+    box-shadow:
+      0 0 8px  2px rgba(120, 120, 128, 0.20),
+      0 0 22px 6px rgba(120, 120, 128, 0.14) !important;
+  }
+}
+
+/* Focus indicator — outline (not box-shadow) so the lens-shadow-
+   pulse keyframe doesn't overwrite the focus ring on every tick.
+   Tailwind's `outline-none` on the element zeros the user-agent
+   outline; this rule re-enables it for keyboard focus only. */
+.lens-button:focus-visible {
+  outline: 2px solid rgba(220, 220, 228, 0.45);
+  outline-offset: 2px;
+}
+
+/* Ghost flicker — at rest the empty vessel is haunted by a faint
+   mercury silhouette that briefly materialises during the rings'
+   major convergence beat (~40 % of the 9 s cycle), then dissolves
+   back into the void. Synced to the same 9 s timeline as
+   lens-border-pulse / lens-shadow-pulse so the flicker rides
+   the convergence rather than free-running.
+   The 38–44 % window keeps the flicker visible across the
+   convergence peak; opacity peaks at 41 % to land on the brightest
+   ring moment. */
+@keyframes lens-ghost-flicker {
+  0%, 35%, 48%, 100% { opacity: 0; }
+  38%                { opacity: 0.14; }
+  41%                { opacity: 0.22; }
+  44%                { opacity: 0.14; }
+}
+
+.lens-ghost {
+  animation: lens-ghost-flicker 9s ease-in-out infinite;
+  transform-origin: 24px 24px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lens-ghost {
+    animation: none;
+    opacity: 0.18;
+  }
 }
