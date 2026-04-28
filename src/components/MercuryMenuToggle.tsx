@@ -334,7 +334,9 @@ export default function MercuryMenuToggle({
 
   // ─── Stable SVG IDs ───────────────────────────────────────
   const uid = useRef(`mq-${Math.random().toString(36).slice(2, 9)}`).current;
-  const liquidAlpha = 0.65;
+
+  // ─── Liquid opacity: SOLID mercury, not translucent ─────
+  const liquidAlpha = 1.0;
 
   return (
     <button
@@ -411,33 +413,33 @@ export default function MercuryMenuToggle({
             <circle cx="24" cy="24" r="22" />
           </clipPath>
 
-          {/* Main mercury body gradient */}
+          {/* Main mercury body gradient — SOLID, dense, mirror-like */}
           <linearGradient id={`mq-body-${uid}`} x1="20%" y1="100%" x2="80%" y2="0%">
-            <stop offset="0%" stopColor="#3a3a48" />
-            <stop offset="15%" stopColor="#5a5a6e" />
-            <stop offset="30%" stopColor="#8a8aa0" />
-            <stop offset="45%" stopColor="#b8b8cc" />
-            <stop offset="60%" stopColor="#d8d8e8" />
-            <stop offset="75%" stopColor="#c0c0d4" />
-            <stop offset="90%" stopColor="#e4e4f0" />
-            <stop offset="100%" stopColor="#f0f0fa" />
+            <stop offset="0%" stopColor="#1a1a28" />
+            <stop offset="15%" stopColor="#3a3a4e" />
+            <stop offset="30%" stopColor="#6a6a82" />
+            <stop offset="45%" stopColor="#a0a0b8" />
+            <stop offset="60%" stopColor="#d0d0e0" />
+            <stop offset="75%" stopColor="#e8e8f4" />
+            <stop offset="90%" stopColor="#f5f5fa" />
+            <stop offset="100%" stopColor="#ffffff" />
           </linearGradient>
 
-          {/* Deep shadow layer */}
+          {/* Deep shadow layer — darker for solid feel */}
           <linearGradient id={`mq-deep-${uid}`} x1="0%" y1="100%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="#1a1a2e" />
-            <stop offset="20%" stopColor="#2e2e44" />
-            <stop offset="40%" stopColor="#4a4a66" />
-            <stop offset="60%" stopColor="#7a7a98" />
-            <stop offset="80%" stopColor="#a8a8c4" />
-            <stop offset="100%" stopColor="#d0d0e4" />
+            <stop offset="0%" stopColor="#0a0a14" />
+            <stop offset="20%" stopColor="#151524" />
+            <stop offset="40%" stopColor="#2a2a3e" />
+            <stop offset="60%" stopColor="#4a4a62" />
+            <stop offset="80%" stopColor="#7a7a94" />
+            <stop offset="100%" stopColor="#a8a8c4" />
           </linearGradient>
 
-          {/* Specular highlight */}
+          {/* Specular highlight — BRIGHT for solid mercury */}
           <radialGradient id={`mq-spec-${uid}`} cx="50%" cy="50%" r="50%">
-            <stop offset="0%" stopColor="#ffffff" stopOpacity="0.95" />
-            <stop offset="30%" stopColor="#e8e8f8" stopOpacity="0.6" />
-            <stop offset="60%" stopColor="#b0b0cc" stopOpacity="0.2" />
+            <stop offset="0%" stopColor="#ffffff" stopOpacity="1.0" />
+            <stop offset="25%" stopColor="#f0f0f8" stopOpacity="0.75" />
+            <stop offset="50%" stopColor="#c8c8e0" stopOpacity="0.35" />
             <stop offset="100%" stopColor="#686880" stopOpacity="0" />
           </radialGradient>
 
@@ -448,12 +450,12 @@ export default function MercuryMenuToggle({
             <stop offset="100%" stopColor="#50506a" stopOpacity="0" />
           </radialGradient>
 
-          {/* Shimmer gradient */}
+          {/* Shimmer gradient — brighter for solid base */}
           <linearGradient id={`mq-shimmer-${uid}`} x1="0%" y1="0%" x2="0%" y2="100%">
             <stop offset="0%" stopColor="#e0e0f0" stopOpacity="0" />
-            <stop offset="25%" stopColor="#e8e8f8" stopOpacity="0.6" />
-            <stop offset="50%" stopColor="#f4f4ff" stopOpacity="0.9" />
-            <stop offset="75%" stopColor="#e8e8f8" stopOpacity="0.6" />
+            <stop offset="25%" stopColor="#f0f0ff" stopOpacity="0.75" />
+            <stop offset="50%" stopColor="#ffffff" stopOpacity="0.95" />
+            <stop offset="75%" stopColor="#f0f0ff" stopOpacity="0.75" />
             <stop offset="100%" stopColor="#e0e0f0" stopOpacity="0" />
           </linearGradient>
 
@@ -465,15 +467,15 @@ export default function MercuryMenuToggle({
             <stop offset="100%" stopColor="#3a3a50" stopOpacity="0.3" />
           </radialGradient>
 
-          {/* Surface meniscus gradient */}
+          {/* Surface meniscus gradient — bright crest */}
           <linearGradient id={`mq-surface-${uid}`} x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="#a0a0b8" />
-            <stop offset="15%" stopColor="#d0d0e4" />
-            <stop offset="30%" stopColor="#f0f0ff" />
+            <stop offset="0%" stopColor="#b0b0c8" />
+            <stop offset="15%" stopColor="#e8e8f8" />
+            <stop offset="30%" stopColor="#ffffff" />
             <stop offset="50%" stopColor="#ffffff" />
-            <stop offset="70%" stopColor="#f0f0ff" />
-            <stop offset="85%" stopColor="#d0d0e4" />
-            <stop offset="100%" stopColor="#a0a0b8" />
+            <stop offset="70%" stopColor="#ffffff" />
+            <stop offset="85%" stopColor="#e8e8f8" />
+            <stop offset="100%" stopColor="#b0b0c8" />
           </linearGradient>
 
           {/* Glow filter */}
@@ -523,7 +525,7 @@ export default function MercuryMenuToggle({
           {liquidPath && (
             <g filter={fillLevel > 0.08 ? `url(#mq-glow-${uid})` : undefined}>
               {/* Deep shadow */}
-              <path d={liquidPath} fill={`url(#mq-deep-${uid})`} opacity={liquidAlpha * 0.6} />
+              <path d={liquidPath} fill={`url(#mq-deep-${uid})`} opacity={0.35} />
               {/* Main body */}
               <path d={liquidPath} fill={`url(#mq-body-${uid})`} opacity={liquidAlpha} />
               {/* Primary specular */}
@@ -534,7 +536,7 @@ export default function MercuryMenuToggle({
                   rx={12 + fillLevel * 6}
                   ry={8 + fillLevel * 5}
                   fill={`url(#mq-spec-${uid})`}
-                  opacity={0.55}
+                  opacity={0.85}
                   filter={`url(#mq-bloom-${uid})`}
                 />
               )}
@@ -546,7 +548,7 @@ export default function MercuryMenuToggle({
                   rx={8}
                   ry={6}
                   fill={`url(#mq-spec-cool-${uid})`}
-                  opacity={0.3}
+                  opacity={0.45}
                 />
               )}
               {/* Shimmer band */}
@@ -554,7 +556,7 @@ export default function MercuryMenuToggle({
                 <path
                   d={shimmer.d}
                   fill={`url(#mq-shimmer-${uid})`}
-                  opacity={liquidAlpha * 0.7}
+                  opacity={0.85}
                   filter={`url(#mq-shimmer-blur-${uid})`}
                 />
               )}
@@ -564,9 +566,9 @@ export default function MercuryMenuToggle({
           {/* Surface highlight (meniscus) */}
           {surfaceHighlight && (
             <>
-              <path d={surfaceHighlight} fill="none" stroke="#d8d8f0" strokeWidth="5" strokeLinecap="round" opacity={0.12 * fillLevel} />
-              <path d={surfaceHighlight} fill="none" stroke={`url(#mq-surface-${uid})`} strokeWidth="2" strokeLinecap="round" opacity={0.85 * fillLevel} />
-              <path d={surfaceHighlight} fill="none" stroke="#ffffff" strokeWidth="0.7" strokeLinecap="round" opacity={0.45 * fillLevel} />
+              <path d={surfaceHighlight} fill="none" stroke="#f0f0ff" strokeWidth="5" strokeLinecap="round" opacity={0.25 * fillLevel} />
+              <path d={surfaceHighlight} fill="none" stroke={`url(#mq-surface-${uid})`} strokeWidth="2.5" strokeLinecap="round" opacity={0.95 * fillLevel} />
+              <path d={surfaceHighlight} fill="none" stroke="#ffffff" strokeWidth="0.8" strokeLinecap="round" opacity={0.75 * fillLevel} />
             </>
           )}
 
