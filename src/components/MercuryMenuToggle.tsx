@@ -335,8 +335,8 @@ export default function MercuryMenuToggle({
   // ─── Stable SVG IDs ───────────────────────────────────────
   const uid = useRef(`mq-${Math.random().toString(36).slice(2, 9)}`).current;
 
-  // ─── Liquid opacity: SOLID mercury, not translucent ─────
-  const liquidAlpha = 1.0;
+  // ─── Liquid opacity: SOLID mercury at 0.50 ─────
+  const liquidAlpha = 0.50;
 
   return (
     <button
@@ -524,8 +524,8 @@ export default function MercuryMenuToggle({
         <g clipPath={`url(#mq-clip-${uid})`}>
           {liquidPath && (
             <g filter={fillLevel > 0.08 ? `url(#mq-glow-${uid})` : undefined}>
-              {/* Deep shadow — very subtle on bright mercury */}
-              <path d={liquidPath} fill={`url(#mq-deep-${uid})`} opacity={0.15} />
+              {/* Deep shadow — 0.50 opacity for solid depth */}
+              <path d={liquidPath} fill={`url(#mq-deep-${uid})`} opacity={0.50} />
               {/* Main body */}
               <path d={liquidPath} fill={`url(#mq-body-${uid})`} opacity={liquidAlpha} />
               {/* Primary specular */}
