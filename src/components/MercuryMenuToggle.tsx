@@ -21,29 +21,21 @@ import type {
 } from "react";
 
 // ─────────────────────────────────────────────────────────────
-// MercuryMenuToggle  ✦  Liquid Metal Vessel
+// MercuryMenuToggle  ✦  Living Liquid Metal
 //
-// A crucible of living quicksilver. The mercury inside is not
-// a flat paint — it is a field of concentric ripples, wave
-// interference, and shifting specular highlights. Like mercury
-// pooled in a glass dish, disturbed by an unseen finger.
+// The mercury is NOT a static gradient. It is a field of
+// flowing metal — a CSS background with animated position
+// that sends a bright specular band sweeping diagonally
+// across the surface (bottom-right → upper-left), like light
+// playing across a pool of quicksilver.
 //
-// IDLE: The empty vessel pulses a thin silver ring outward
-//   every few seconds — the heartbeat that says "touch me".
+// On hover the liquid pours upward from the base, flooding
+// the vessel as a viscous column. Inside, the shimmer runs
+// continuously. The meniscus tilts toward the cursor — the
+// metal has weight and inertia.
 //
-// HOVER: Mercury POURS upward from the base, flooding the
-//   chamber as a liquid column. Inside, concentric rings
-//   ripple outward from the centre, catching light at their
-//   crests. A slow-moving highlight drifts across the surface
-//   like a searchlight on water at night. The meniscus tilts
-//   toward the cursor — the metal is heavy, viscous, alive.
-//
-//   The pour is not uniform — it rises faster at the edges
-//   and slower at the centre, creating that characteristic
-//   liquid metal meniscus curve.
-//
-// OPEN: The vessel locks full. Ripples calm but do not stop.
-//   The centre dot blooms into an X.
+// Idle: A thin silver ring pulses outward — the vessel's
+// heartbeat calling for interaction.
 // ─────────────────────────────────────────────────────────────
 
 type Phase = "rest" | "enter" | "active" | "exit";
@@ -74,7 +66,7 @@ export default function MercuryMenuToggle({
   const isActive = phase !== "rest";
   const lensState: LensState = isOpen ? "open" : isActive ? "hover" : "rest";
 
-  // ─── Cursor tracking ───────────────────────────────────────
+  // ─── Cursor tracking ─────────────────────────────────────
   const px = useMotionValue(0.5);
   const py = useMotionValue(0.5);
   const cx = useSpring(px, { stiffness: 140, damping: 20, mass: 0.55 });
@@ -82,12 +74,12 @@ export default function MercuryMenuToggle({
   const intensity = useSpring(0, { stiffness: 70, damping: 18 });
   useEffect(() => { intensity.set(isActive ? 1 : 0); }, [isActive, intensity]);
 
-  // ─── Liquid surface tilt ──────────────────────────────────
+  // ─── Liquid surface tilt ───────────────────────────────
   const surfaceTilt = useTransform(cx, [0, 0.5, 1], [-12, 0, 12]);
   const specularX = useTransform(cx, (v) => 30 + (1 - v) * 25);
   const specularY = useTransform(cy, (v) => 22 + (1 - v) * 18);
 
-  // ─── Phase timers ────────────────────────────────────────
+  // ─── Phase timers ──────────────────────────────────────
   const enterTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const exitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const restTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -102,7 +94,7 @@ export default function MercuryMenuToggle({
   const beginEnter = useCallback(() => {
     clearTimers();
     setPhase("enter");
-    enterTimerRef.current = setTimeout(() => { setPhase("active"); enterTimerRef.current = null; }, 480);
+    enterTimerRef.current = setTimeout(() => { setPhase("active"); enterTimerRef.current = null; }, 500);
   }, [clearTimers]);
 
   const beginExit = useCallback(() => {
@@ -118,7 +110,7 @@ export default function MercuryMenuToggle({
     [exitTimerRef, restTimerRef].forEach((r) => { if (r.current) { clearTimeout(r.current); r.current = null; } });
   }, []);
 
-  // ─── Event handlers ───────────────────────────────────────
+  // ─── Events ────────────────────────────────────────────
   const handlePointerEnter = useCallback((e: ReactPointerEvent<HTMLButtonElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
     px.set(Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width)));
@@ -155,16 +147,13 @@ export default function MercuryMenuToggle({
 
   const handleClick = useCallback(() => { onToggle?.(!isOpen); }, [isOpen, onToggle]);
 
-  // ─── IDs ─────────────────────────────────────────────────
+  // ─── IDs ───────────────────────────────────────────────
   const uid = useRef(`mq-${Math.random().toString(36).slice(2, 9)}`).current;
-  const rippleId = `mq-ripple-${uid}`;
-  const waveId = `mq-wave-${uid}`;
-  const aliveId = `mq-alive-${uid}`;
 
-  // ─── Clip for liquid pour ────────────────────────────────
+  // ─── Liquid fill clip (rises from bottom) ──────────────
   const fillClip = useTransform(intensity, (i: number) => `inset(${Math.max(0, (1 - i) * 100)}% 0 0 0)`);
 
-  // ─── Surface path with tilt ───────────────────────────────
+  // ─── Surface path with tilt ──────────────────────────────
   const surfacePath = useTransform<number, string>([surfaceTilt], (vals: number[]) => {
     const tilt = vals[0];
     const ly = 5 + tilt * 0.35, ry = 5 - tilt * 0.35, my = -1;
@@ -223,7 +212,7 @@ export default function MercuryMenuToggle({
         style={{ boxShadow: "inset 0 0 18px rgba(200,200,212,0.30), 0 0 24px 4px rgba(200,200,212,0.22)" }}
       />
 
-      {/* ═══ GOLD ACCENT BLOOM ═══ */}
+      {/* ═══ GOLD BLOOM ═══ */}
       <motion.span
         aria-hidden="true"
         className="pointer-events-none absolute inset-[-3px] rounded-full"
@@ -233,151 +222,77 @@ export default function MercuryMenuToggle({
         style={{ boxShadow: "0 0 28px 8px var(--accent-glow-soft)" }}
       />
 
-      {/* ═══ MERCURY VESSEL (single SVG) ═══ */}
+      {/* ═══ LIQUID MERCURY BODY (div with animated gradient) ═══ */}
+      <motion.div
+        className="absolute inset-[2px] rounded-full overflow-hidden mercury-liquid"
+        initial={false}
+        animate={{ opacity: isActive ? 1 : 0 }}
+        transition={{ duration: 0.12 }}
+        style={{
+          clipPath: fillClip,
+        }}
+      >
+        <motion.div
+          className="absolute inset-[-20%] mercury-shimmer"
+          initial={false}
+          animate={{ y: isActive ? 0 : 12 }}
+          transition={
+            phase === "enter"
+              ? { duration: 0.80, delay: 0.02, ease: [0.22, 1, 0.36, 1] }
+              : phase === "exit"
+              ? { duration: 0.38, ease: [0.4, 0, 0.6, 1] }
+              : { duration: 0.18 }
+          }
+        />
+      </motion.div>
+
+      {/* ═══ RIPPLE OVERLAY (SVG, on top of liquid) ═══ */}
       <svg
         viewBox="0 0 48 48"
         className="absolute inset-[2px] h-[calc(100%-4px)] w-[calc(100%-4px)] overflow-hidden rounded-full"
         preserveAspectRatio="xMidYMid slice"
         aria-hidden="true"
+        style={{ pointerEvents: "none" }}
       >
         <defs>
-          {/* 
-            RIPPLE FIELD — concentric rings like the reference photo.
-            Thin strokes at varying opacity create the interference
-            pattern of real mercury disturbed by a fingertip.
-          */}
-          <radialGradient id={rippleId} cx="50%" cy="50%" r="50%">
-            <stop offset="0%" stopColor="rgba(255,255,255,0.0)" />
-            <stop offset="15%" stopColor="rgba(255,255,255,0.12)" />
-            <stop offset="25%" stopColor="rgba(255,255,255,0.0)" />
-            <stop offset="35%" stopColor="rgba(255,255,255,0.08)" />
-            <stop offset="45%" stopColor="rgba(255,255,255,0.0)" />
-            <stop offset="55%" stopColor="rgba(255,255,255,0.06)" />
-            <stop offset="65%" stopColor="rgba(255,255,255,0.0)" />
-            <stop offset="75%" stopColor="rgba(255,255,255,0.04)" />
-            <stop offset="85%" stopColor="rgba(255,255,255,0.0)" />
-            <stop offset="100%" stopColor="rgba(200,200,212,0.10)" />
-          </radialGradient>
-
-          {/* 
-            WAVE GRADIENT — the shifting body of the mercury.
-            Animated via CSS background-position to create the
-            illusion of liquid in slow convection.
-          */}
-          <radialGradient id={waveId} cx="42%" cy="38%" r="62%">
-            <stop offset="0%" stopColor="var(--hero-metal-4)" />
-            <stop offset="30%" stopColor="var(--hero-metal-2)" />
-            <stop offset="55%" stopColor="var(--hero-metal-6)" />
-            <stop offset="80%" stopColor="var(--hero-metal-3)" />
-            <stop offset="100%" stopColor="var(--hero-metal-1)" />
-          </radialGradient>
-
-          {/* 
-            ALIVE HIGHLIGHT — a bright spot that slowly orbits
-            the mercury surface, catching different ridges.
-          */}
-          <radialGradient id={aliveId} cx="30%" cy="25%" r="40%">
-            <stop offset="0%" stopColor="rgba(255,255,255,0.70)" />
-            <stop offset="20%" stopColor="rgba(240,240,250,0.25)" />
-            <stop offset="50%" stopColor="rgba(220,220,234,0.05)" />
+          <radialGradient id={`mq-spec-${uid}`} cx="30%" cy="25%" r="35%">
+            <stop offset="0%" stopColor="rgba(255,255,255,0.85)" />
+            <stop offset="25%" stopColor="rgba(240,240,250,0.30)" />
+            <stop offset="60%" stopColor="rgba(220,220,234,0.05)" />
             <stop offset="100%" stopColor="rgba(220,220,234,0)" />
-          </radialGradient>
-
-          {/* Specular — cursor tracking */}
-          <motion.radialGradient
-            id={`mq-sheen-${uid}`}
-            cx={specularX as MotionValue<number>}
-            cy={specularY as MotionValue<number>}
-            r="0.26"
-          >
-            <stop offset="0%" stopColor="rgba(255,255,255,0.95)" />
-            <stop offset="28%" stopColor="rgba(242,242,250,0.48)" />
-            <stop offset="60%" stopColor="rgba(220,220,234,0.08)" />
-            <stop offset="100%" stopColor="rgba(220,220,234,0)" />
-          </motion.radialGradient>
-
-          {/* Deep shadow */}
-          <radialGradient id={`mq-deep-${uid}`} cx="35%" cy="82%" r="68%">
-            <stop offset="0%" stopColor="rgba(4,4,8,0.65)" />
-            <stop offset="42%" stopColor="rgba(7,7,14,0.32)" />
-            <stop offset="100%" stopColor="rgba(10,10,18,0)" />
           </radialGradient>
         </defs>
 
-        {/* ── Ghost at rest ── */}
-        {phase === "rest" && (
-          <g className="lens-ghost">
-            <circle cx="24" cy="24" r="19" fill="var(--v-smoke)" fillOpacity="0.10" />
+        {/* Ripple rings — only when active */}
+        {isActive && (
+          <g className="mercury-ripples" opacity="0.5">
+            <circle cx="24" cy="24" r="5" fill="none" stroke="rgba(255,255,255,0.20)" strokeWidth="0.4" />
+            <circle cx="24" cy="24" r="9" fill="none" stroke="rgba(255,255,255,0.14)" strokeWidth="0.35" />
+            <circle cx="24" cy="24" r="13" fill="none" stroke="rgba(255,255,255,0.10)" strokeWidth="0.3" />
+            <circle cx="24" cy="24" r="17" fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth="0.3" />
+            <circle cx="24" cy="24" r="21" fill="none" stroke="rgba(200,200,212,0.08)" strokeWidth="0.25" />
           </g>
         )}
 
-        {/* ── LIQUID MERCURY BODY ── */}
-        <motion.g
-          initial={false}
-          animate={{ opacity: isActive ? 1 : 0 }}
-          transition={{ duration: 0.12 }}
-        >
-          <motion.g
-            style={{ clipPath: fillClip }}
+        {/* Meniscus surface line */}
+        {isActive && (
+          <motion.path
+            fill="none"
+            stroke="rgba(180,180,195,0.45)"
+            strokeWidth="0.9"
             initial={false}
-            animate={{ y: isActive ? 0 : 10 }}
-            transition={
-              phase === "enter"
-                ? { duration: 0.75, delay: 0.02, ease: [0.22, 1, 0.36, 1] }
-                : phase === "exit"
-                ? { duration: 0.38, ease: [0.4, 0, 0.6, 1] }
-                : { duration: 0.18 }
-            }
-          >
-            {/* 
-              Base wave body — animated gradient creates the
-              slow convection/shift that reads as liquid metal.
-            */}
-            <rect x="-4" y="-4" width="56" height="56" fill={`url(#${waveId})`} className="mercury-wave" />
-
-            {/* Concentric ripple rings — the interference pattern */}
-            <g className="mercury-ripples" opacity="0.6">
-              <circle cx="24" cy="24" r="6" fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth="0.4" />
-              <circle cx="24" cy="24" r="10" fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="0.35" />
-              <circle cx="24" cy="24" r="14" fill="none" stroke="rgba(255,255,255,0.09)" strokeWidth="0.3" />
-              <circle cx="24" cy="24" r="18" fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth="0.3" />
-              <circle cx="24" cy="24" r="22" fill="none" stroke="rgba(200,200,212,0.08)" strokeWidth="0.25" />
-            </g>
-
-            {/* Ripple field gradient overlay */}
-            <rect x="-4" y="-4" width="56" height="56" fill={`url(#${rippleId})`} className="mercury-ripple-field" />
-
-            {/* Deep shadow */}
-            <rect x="0" y="0" width="48" height="48" fill={`url(#${`mq-deep-${uid}`})`} />
-
-            {/* Specular highlight (cursor-tracking) */}
-            <rect x="0" y="0" width="48" height="48" fill={`url(#${`mq-sheen-${uid}`})`} />
-
-            {/* Alive orbiting highlight */}
-            <g className="mercury-alive-highlight">
-              <rect x="0" y="0" width="48" height="48" fill={`url(#${aliveId})`} />
-            </g>
-
-            {/* Meniscus surface line */}
-            <motion.path
-              fill="none"
-              stroke="var(--hero-metal-5)"
-              strokeWidth="0.9"
-              strokeOpacity={0.5}
-              initial={false}
-              animate={{ d: surfacePath.get() }}
-              transition={{ duration: 0.06 }}
-              style={{ rotate: surfaceTilt, transformOrigin: "24px 4px" }}
-            />
-          </motion.g>
-        </motion.g>
+            animate={{ d: surfacePath.get() }}
+            transition={{ duration: 0.06 }}
+            style={{ rotate: surfaceTilt, transformOrigin: "24px 4px" }}
+          />
+        )}
 
         {/* Inner rim */}
         <circle cx="24" cy="24" r="21" fill="none" stroke="var(--v-smoke)" strokeWidth="0.5" strokeOpacity="0.22" />
       </svg>
 
       {/* ═══ DOT → X ICON ═══ */}
-      <svg viewBox="0 0 48 48" className="relative h-full w-full" aria-hidden="true">
+      <svg viewBox="0 0 48 48" className="relative h-full w-full" aria-hidden="true" style={{ zIndex: 10 }}>
         <motion.g
           style={{ transformOrigin: "24px 24px" }}
           initial={false}

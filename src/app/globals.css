@@ -647,119 +647,113 @@ body.theme-flipping *::after {
   }
 }
 
-/* ── Mercury alive — concentric ripple rings expanding ─
-   Like a fingertip touching a pool of mercury — rings
-   propagate outward, catch light at their crests, then fade.
-   Multiple rings at staggered intervals create interference. */
-@keyframes mercury-ripple {
+/* ── Mercury liquid — the flowing metal body ─
+   A CSS linear-gradient with animated background-position.
+   A bright specular band sweeps diagonally across the surface
+   (bottom-right → upper-left), creating the illusion of
+   light playing across moving liquid metal. This is NOT a
+   static image — the gradient pixels are in continuous motion. */
+.mercury-liquid {
+  background: transparent;
+}
+
+.mercury-shimmer {
+  width: 140%;
+  height: 140%;
+  top: -20%;
+  left: -20%;
+  position: absolute;
+  border-radius: 50%;
+  background: linear-gradient(
+    135deg,
+    #08080c 0%,
+    #151520 12%,
+    #2a2a38 22%,
+    #4a4a5a 30%,
+    #7a7a8e 36%,
+    #b0b0c0 40%,
+    #ffffff 44%,
+    #e8e8f0 46%,
+    #8a8a9e 50%,
+    #3a3a48 58%,
+    #1a1a26 68%,
+    #0c0c14 80%,
+    #050508 100%
+  );
+  background-size: 300% 300%;
+  animation: mercury-sweep 2.2s ease-in-out infinite;
+}
+
+/* ── Mercury sweep — diagonal shimmer across liquid ─
+   The bright band travels from bottom-right to upper-left,
+   then reverses. This creates the living liquid metal feel.
+   Only runs when the mercury-liquid container is hovered/active. */
+@keyframes mercury-sweep {
   0% {
-    transform: scale(0.6);
-    opacity: 0.5;
+    background-position: 100% 100%;
   }
-  60% {
-    opacity: 0.15;
+  50% {
+    background-position: 0% 0%;
   }
   100% {
-    transform: scale(1.6);
+    background-position: 100% 100%;
+  }
+}
+
+/* ── Mercury alive — subtle scale breathing on the shimmer ─
+   Adds a gentle pulse to the liquid so it doesn't just slide
+   but also breathes — like mercury expanding and contracting
+   under surface tension. */
+@keyframes mercury-alive {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.04);
+  }
+}
+
+.mercury-shimmer {
+  animation: mercury-sweep 2.2s ease-in-out infinite, mercury-alive 3.5s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mercury-shimmer {
+    animation: none !important;
+  }
+}
+
+/* ── Mercury ripple rings — concentric disturbance ─
+   Thin rings that expand outward from centre, like a finger
+   touching a pool of mercury. Multiple rings at staggered
+   delays create interference. Only visible when mercury is
+   present (hover/active). */
+@keyframes mercury-ripple {
+  0% {
+    transform: scale(0.5);
+    opacity: 0.45;
+  }
+  60% {
+    opacity: 0.12;
+  }
+  100% {
+    transform: scale(1.5);
     opacity: 0;
   }
 }
 
 .mercury-ripples circle {
-  animation: mercury-ripple 3.5s ease-out infinite;
+  animation: mercury-ripple 3s ease-out infinite;
   transform-origin: 24px 24px;
 }
-.mercury-ripples circle:nth-child(1) { animation-delay: 0s; animation-duration: 2.8s; }
-.mercury-ripples circle:nth-child(2) { animation-delay: 0.5s; animation-duration: 3.2s; }
-.mercury-ripples circle:nth-child(3) { animation-delay: 1.0s; animation-duration: 3.6s; }
-.mercury-ripples circle:nth-child(4) { animation-delay: 1.5s; animation-duration: 4.0s; }
-.mercury-ripples circle:nth-child(5) { animation-delay: 2.0s; animation-duration: 4.4s; }
-
-/* ── Mercury wave — slow gradient drift ─
-   The background metal appears to convect and shift,
-   like warm mercury rising and cool mercury sinking. */
-@keyframes mercury-wave {
-  0% {
-    transform: translate(0, 0) scale(1);
-  }
-  25% {
-    transform: translate(-1px, 0.5px) scale(1.015);
-  }
-  50% {
-    transform: translate(0.5px, -0.5px) scale(1.01);
-  }
-  75% {
-    transform: translate(-0.5px, 0) scale(1.02);
-  }
-  100% {
-    transform: translate(0, 0) scale(1);
-  }
-}
-
-.mercury-wave {
-  animation: mercury-wave 5s ease-in-out infinite;
-  transform-origin: 24px 24px;
-}
-
-/* ── Mercury alive highlight — orbiting specular ─
-   A bright spot that slowly circles the mercury surface,
-   catching different ripple crests as it moves. */
-@keyframes mercury-alive-highlight {
-  0% {
-    transform: translate(0, 0);
-    opacity: 0.6;
-  }
-  25% {
-    transform: translate(3px, -2px);
-    opacity: 1;
-  }
-  50% {
-    transform: translate(0, -3px);
-    opacity: 0.5;
-  }
-  75% {
-    transform: translate(-3px, -1px);
-    opacity: 0.8;
-  }
-  100% {
-    transform: translate(0, 0);
-    opacity: 0.6;
-  }
-}
-
-.mercury-alive-highlight {
-  animation: mercury-alive-highlight 7s ease-in-out infinite;
-}
-
-/* ── Mercury ripple field — the interference pattern ─
-   A subtle radial gradient that slowly rotates, creating
-   the illusion of light playing across rippling metal. */
-@keyframes mercury-ripple-field {
-  0% {
-    transform: rotate(0deg) scale(1);
-    opacity: 0.5;
-  }
-  50% {
-    transform: rotate(180deg) scale(1.08);
-    opacity: 0.7;
-  }
-  100% {
-    transform: rotate(360deg) scale(1);
-    opacity: 0.5;
-  }
-}
-
-.mercury-ripple-field {
-  animation: mercury-ripple-field 12s linear infinite;
-  transform-origin: 24px 24px;
-  mix-blend-mode: soft-light;
-}
+.mercury-ripples circle:nth-child(1) { animation-delay: 0s; animation-duration: 2.4s; }
+.mercury-ripples circle:nth-child(2) { animation-delay: 0.4s; animation-duration: 2.8s; }
+.mercury-ripples circle:nth-child(3) { animation-delay: 0.8s; animation-duration: 3.2s; }
+.mercury-ripples circle:nth-child(4) { animation-delay: 1.2s; animation-duration: 3.6s; }
+.mercury-ripples circle:nth-child(5) { animation-delay: 1.6s; animation-duration: 4.0s; }
 
 @media (prefers-reduced-motion: reduce) {
-  .mercury-ripples circle,
-  .mercury-wave,
-  .mercury-alive-highlight,
-  .mercury-ripple-field {
+  .mercury-ripples circle {
     animation: none !important;
   }
 }
