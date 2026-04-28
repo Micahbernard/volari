@@ -413,26 +413,26 @@ export default function MercuryMenuToggle({
             <circle cx="24" cy="24" r="22" />
           </clipPath>
 
-          {/* Main mercury body gradient — SOLID, dense, mirror-like */}
+          {/* Main mercury body gradient — BRIGHT SOLID SILVER */}
           <linearGradient id={`mq-body-${uid}`} x1="20%" y1="100%" x2="80%" y2="0%">
-            <stop offset="0%" stopColor="#1a1a28" />
-            <stop offset="15%" stopColor="#3a3a4e" />
-            <stop offset="30%" stopColor="#6a6a82" />
-            <stop offset="45%" stopColor="#a0a0b8" />
-            <stop offset="60%" stopColor="#d0d0e0" />
-            <stop offset="75%" stopColor="#e8e8f4" />
-            <stop offset="90%" stopColor="#f5f5fa" />
+            <stop offset="0%" stopColor="#8a8a9e" />
+            <stop offset="15%" stopColor="#a8a8be" />
+            <stop offset="30%" stopColor="#c8c8d8" />
+            <stop offset="45%" stopColor="#e0e0ec" />
+            <stop offset="60%" stopColor="#f0f0f8" />
+            <stop offset="75%" stopColor="#f8f8ff" />
+            <stop offset="90%" stopColor="#ffffff" />
             <stop offset="100%" stopColor="#ffffff" />
           </linearGradient>
 
-          {/* Deep shadow layer — darker for solid feel */}
+          {/* Deep shadow layer — very subtle for bright mercury */}
           <linearGradient id={`mq-deep-${uid}`} x1="0%" y1="100%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="#0a0a14" />
-            <stop offset="20%" stopColor="#151524" />
-            <stop offset="40%" stopColor="#2a2a3e" />
-            <stop offset="60%" stopColor="#4a4a62" />
-            <stop offset="80%" stopColor="#7a7a94" />
-            <stop offset="100%" stopColor="#a8a8c4" />
+            <stop offset="0%" stopColor="#5a5a6e" />
+            <stop offset="20%" stopColor="#7a7a8e" />
+            <stop offset="40%" stopColor="#9a9ab0" />
+            <stop offset="60%" stopColor="#b8b8d0" />
+            <stop offset="80%" stopColor="#d8d8e8" />
+            <stop offset="100%" stopColor="#e8e8f4" />
           </linearGradient>
 
           {/* Specular highlight — BRIGHT for solid mercury */}
@@ -524,8 +524,8 @@ export default function MercuryMenuToggle({
         <g clipPath={`url(#mq-clip-${uid})`}>
           {liquidPath && (
             <g filter={fillLevel > 0.08 ? `url(#mq-glow-${uid})` : undefined}>
-              {/* Deep shadow */}
-              <path d={liquidPath} fill={`url(#mq-deep-${uid})`} opacity={0.35} />
+              {/* Deep shadow — very subtle on bright mercury */}
+              <path d={liquidPath} fill={`url(#mq-deep-${uid})`} opacity={0.15} />
               {/* Main body */}
               <path d={liquidPath} fill={`url(#mq-body-${uid})`} opacity={liquidAlpha} />
               {/* Primary specular */}
