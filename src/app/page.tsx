@@ -3,9 +3,9 @@
 import { useEffect, useRef, useMemo } from "react";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
-import ServicesShowcase from "@/components/ServicesShowcase";
-import PageTransition from "@/components/PageTransition";
-import SiteFooter from "@/components/SiteFooter";
+import TerminalContact from "@/components/TerminalContact";
+import ProcessPipeline from "@/components/ProcessPipeline";
+import WorkGallery from "@/components/WorkGallery";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -16,7 +16,6 @@ gsap.registerPlugin(ScrollTrigger);
 const HERO_WORD = "VOLARI";
 
 // Custom easing: slow heavy start, explosive release, gentle settle.
-// Approximates a spring with high tension and low friction.
 const CHAR_EASE = "expo.out";
 const CHAR_DURATION = 1.6;
 const CHAR_STAGGER = 0.07;
@@ -36,7 +35,6 @@ export default function Home() {
   const metaLeftRef = useRef<HTMLDivElement>(null);
   const metaRightRef = useRef<HTMLDivElement>(null);
 
-  // Split tagline into words for staggered reveal
   const taglineWords = useMemo(
     () => "Digital Experiences Studio — Bespoke Creative Technology".split(" "),
     []
@@ -44,23 +42,11 @@ export default function Home() {
 
   useEffect(() => {
     const ctx = gsap.context(() => {
-      // ════════════════════════════════════════════════════════
-      // MASTER TIMELINE — The Hero Sequence
-      //
-      // Beat 0  (0.0s) : Black overlay covers viewport
-      // Beat 1  (0.2s) : Overlay lifts — curtain rise
-      // Beat 2  (0.4s) : Horizontal rules wipe from center
-      // Beat 3  (0.6s) : "VOLARI" characters rise with rotation
-      // Beat 4  (1.4s) : Tagline words stagger in
-      // Beat 5  (1.6s) : Corner marks + metadata fade in
-      // ════════════════════════════════════════════════════════
-
       const master = gsap.timeline({
         defaults: { ease: CHAR_EASE },
       });
 
       // ── Beat 0–1: Curtain lift ──
-      // Full black overlay fades up to reveal the scene.
       if (overlayRef.current) {
         master.to(
           overlayRef.current,
@@ -74,7 +60,6 @@ export default function Home() {
       }
 
       // ── Beat 2: Horizontal rules ──
-      // Wipe from center outward — establishes the frame.
       if (rulesRef.current.top) {
         master.fromTo(
           rulesRef.current.top,
@@ -103,9 +88,6 @@ export default function Home() {
       }
 
       // ── Beat 3: Character reveal ──
-      // Each letter rises from below its clip-mask container
-      // with slight rotation. The stagger creates a wave that
-      // reads left-to-right like the eye naturally scans.
       const chars = charRefs.current.filter(Boolean);
       if (chars.length) {
         master.fromTo(
@@ -186,8 +168,6 @@ export default function Home() {
       }
 
       // ── Hero scroll parallax ──
-      // Title drifts up and fades as user scrolls past hero.
-      // Driven by ScrollTrigger, not React state.
       if (heroRef.current) {
         const heroContent = heroRef.current.querySelector(
           "[data-hero-content]"
@@ -205,16 +185,12 @@ export default function Home() {
           });
         }
       }
-
     });
 
     return () => ctx.revert();
   }, []);
 
   // ── Hero cursor gravity ──
-  // After entrance completes, each letter tilts on a 3D axis toward the
-  // cursor. Closer letters tilt harder, lift forward (translateZ), and
-  // pick up a faint gold drop-shadow glow. rAF lerp keeps it buttery.
   useEffect(() => {
     if (
       typeof window !== "undefined" &&
@@ -231,87 +207,45 @@ export default function Home() {
     }, 3000);
 
     type CharState = {
-      tx: number;
-      ty: number;
-      tz: number;
-      rx: number;
-      ry: number;
-      glow: number;
-      ttx: number;
-      tty: number;
-      ttz: number;
-      trx: number;
-      tryy: number;
-      tglow: number;
+      tx: number; ty: number; tz: number; rx: number; ry: number; glow: number;
+      ttx: number; tty: number; ttz: number; trx: number; tryy: number; tglow: number;
     };
     const state: CharState[] = chars.map(() => ({
-      tx: 0,
-      ty: 0,
-      tz: 0,
-      rx: 0,
-      ry: 0,
-      glow: 0,
-      ttx: 0,
-      tty: 0,
-      ttz: 0,
-      trx: 0,
-      tryy: 0,
-      tglow: 0,
+      tx: 0, ty: 0, tz: 0, rx: 0, ry: 0, glow: 0,
+      ttx: 0, tty: 0, ttz: 0, trx: 0, tryy: 0, tglow: 0,
     }));
 
-    let mouseX = -99999;
-    let mouseY = -99999;
-    let lastActivity = -Infinity; // ms — last pointermove
-    let idleAmp = 0; // 0..1 envelope for idle breath
+    let mouseX = -99999, mouseY = -99999, lastActivity = -Infinity, idleAmp = 0;
 
-    const onMove = (e: PointerEvent) => {
-      mouseX = e.clientX;
-      mouseY = e.clientY;
-      lastActivity = performance.now();
-    };
-    const onLeave = () => {
-      mouseX = -99999;
-      mouseY = -99999;
-    };
+    const onMove = (e: PointerEvent) => { mouseX = e.clientX; mouseY = e.clientY; lastActivity = performance.now(); };
+    const onLeave = () => { mouseX = -99999; mouseY = -99999; };
 
     window.addEventListener("pointermove", onMove, { passive: true });
     window.addEventListener("pointerleave", onLeave);
     window.addEventListener("blur", onLeave);
 
-    const MAX_DIST = 320;
-    const LERP = 0.09;
-    const AMBIENT_PERIOD = 5.5; // seconds — matches prior CSS cadence
+    const MAX_DIST = 320, LERP = 0.09, AMBIENT_PERIOD = 5.5;
     let raf = 0;
 
     const tick = () => {
-      // Ambient clock — smooth looping via sin ease for layers whose wrap
-      // would be visible (bokeh, steel); sawtooth is fine for grain (tiles
-      // repeat at 72px) and specular (wraps off-letter, so invisible).
       const now = performance.now() / 1000;
-      const phase = (now / AMBIENT_PERIOD) % 1; // 0..1 sawtooth
-      const sinE = 0.5 - 0.5 * Math.cos(phase * Math.PI * 2); // 0..1..0 C¹-smooth
-      const sinD = sinE - 0.5; // -0.5..0.5, centered
+      const phase = (now / AMBIENT_PERIOD) % 1;
+      const sinE = 0.5 - 0.5 * Math.cos(phase * Math.PI * 2);
+      const sinD = sinE - 0.5;
 
-      // ── Idle breath envelope ──
-      // Ramps up when cursor leaves viewport or hasn't moved in 2s;
-      // ramps down instantly on cursor return. Only runs post-entrance.
-      const cursorPresent =
-        mouseX !== -99999 && performance.now() - lastActivity < 2000;
+      const cursorPresent = mouseX !== -99999 && performance.now() - lastActivity < 2000;
       const targetIdleAmp = active && !cursorPresent ? 1 : 0;
       idleAmp += (targetIdleAmp - idleAmp) * 0.04;
 
       for (let i = 0; i < chars.length; i++) {
         const el = chars[i];
         const r = el.getBoundingClientRect();
-        const cx = r.left + r.width / 2;
-        const cy = r.top + r.height / 2;
-        const dx = mouseX - cx;
-        const dy = mouseY - cy;
+        const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+        const dx = mouseX - cx, dy = mouseY - cy;
         const dist = Math.hypot(dx, dy);
         const t = 1 - Math.min(1, dist / MAX_DIST);
         const soft = t * t * (3 - 2 * t);
 
-        // ── Transform + glow targets (gated to post-entrance) ──
         if (active) {
           const s = state[i];
           s.trx = (-dy / MAX_DIST) * 14 * soft;
@@ -322,26 +256,15 @@ export default function Home() {
           s.tglow = soft;
         }
 
-        // ── Ambient layer positions ──
-        // Grain: sawtooth OK (pattern tiles at 72px so wrap is invisible)
-        const grainX = phase * 72;
-        const grainY = phase * 56;
-        // Bokeh A/B: sin ping-pong centered — no wrap stutter
-        const bokAx = 45 + sinD * 34; // 28..62
-        const bokAy = 45 + sinD * 14; // 38..52
-        const bokBx = 55 - sinD * 34; // 72..38 (opposite phase)
-        const bokBy = 55 - sinD * 14; // 62..48
-        // Specular: sawtooth OK (both endpoints position the blade off-letter)
-        const specAmbX = 140 - phase * 185; // 140% → -45%
-        // Steel body: sin ping-pong so the steel gradient eases back and forth
-        const steelX = sinE * 100; // 0..100..0 smooth
+        const grainX = phase * 72, grainY = phase * 56;
+        const bokAx = 45 + sinD * 34, bokAy = 45 + sinD * 14;
+        const bokBx = 55 - sinD * 34, bokBy = 55 - sinD * 14;
+        const specAmbX = 140 - phase * 185;
+        const steelX = sinE * 100;
 
-        // ── Cursor-steered specular position ──
-        // dx/dy → 0..100% within letter; clamped, eased via soft
         const cDx = Math.max(-1, Math.min(1, dx / 220));
         const cDy = Math.max(-1, Math.min(1, dy / 140));
-        const cursorSpecX = 50 + cDx * 50;
-        const cursorSpecY = 50 + cDy * 50;
+        const cursorSpecX = 50 + cDx * 50, cursorSpecY = 50 + cDy * 50;
         const specX = specAmbX * (1 - soft) + cursorSpecX * soft;
         const specY = 50 * (1 - soft) + cursorSpecY * soft;
 
@@ -354,8 +277,7 @@ export default function Home() {
       }
 
       for (let i = 0; i < chars.length; i++) {
-        const el = chars[i];
-        const s = state[i];
+        const el = chars[i], s = state[i];
         s.tx += (s.ttx - s.tx) * LERP;
         s.ty += (s.tty - s.ty) * LERP;
         s.tz += (s.ttz - s.tz) * LERP;
@@ -363,75 +285,43 @@ export default function Home() {
         s.ry += (s.tryy - s.ry) * LERP;
         s.glow += (s.tglow - s.glow) * LERP;
 
-        // Skip style writes once below threshold to save paints
-        const skip =
-          !active &&
-          idleAmp < 0.005 &&
-          Math.abs(s.tx) < 0.02 &&
-          Math.abs(s.ty) < 0.02 &&
-          Math.abs(s.tz) < 0.02 &&
-          Math.abs(s.rx) < 0.02 &&
-          Math.abs(s.ry) < 0.02 &&
-          s.glow < 0.005;
+        const skip = !active && idleAmp < 0.005 &&
+          Math.abs(s.tx) < 0.02 && Math.abs(s.ty) < 0.02 &&
+          Math.abs(s.tz) < 0.02 && Math.abs(s.rx) < 0.02 &&
+          Math.abs(s.ry) < 0.02 && s.glow < 0.005;
+
         if (!skip) {
-          // Idle breath — staggered sin oscillators per letter, scaled by envelope
           const ph = i * 0.42;
           const idleRx = Math.sin(now * 0.55 + ph) * 0.3 * idleAmp;
           const idleRy = Math.sin(now * 0.37 + ph + 1.3) * 0.4 * idleAmp;
           const idleScale = 1 + Math.sin(now * 0.42 + ph) * 0.008 * idleAmp;
           const idleTy = Math.sin(now * 0.31 + ph + 0.7) * 0.6 * idleAmp;
 
-          el.style.transform = `translate3d(${s.tx.toFixed(2)}px, ${(
-            s.ty + idleTy
-          ).toFixed(2)}px, ${s.tz.toFixed(2)}px) rotateX(${(
-            s.rx + idleRx
-          ).toFixed(2)}deg) rotateY(${(s.ry + idleRy).toFixed(
-            2
-          )}deg) scale(${idleScale.toFixed(4)})`;
+          el.style.transform = `translate3d(${s.tx.toFixed(2)}px, ${(s.ty + idleTy).toFixed(2)}px, ${s.tz.toFixed(2)}px) rotateX(${(s.rx + idleRx).toFixed(2)}deg) rotateY(${(s.ry + idleRy).toFixed(2)}deg) scale(${idleScale.toFixed(4)})`;
+
           const g = s.glow;
-          // Chromatic edge at tilt — RGB split keyed to rotateY sign.
-          // Applied BEFORE silver bloom so bloom softens the fringe into
-          // a subtle material weight cue rather than a graphic effect.
           const rySoft = Math.min(1, Math.abs(s.ry) / 14);
           const signY = s.ry >= 0 ? 1 : -1;
           const parts: string[] = [];
 
           if (rySoft > 0.03) {
-            const off = 1 * rySoft;
-            const ca = (0.2 * rySoft).toFixed(3);
-            // Warm channel drifts with tilt direction; cool opposite.
-            parts.push(
-              `drop-shadow(${(signY * off).toFixed(
-                2
-              )}px 0 0 rgba(255,132,110,${ca}))`
-            );
-            parts.push(
-              `drop-shadow(${(-signY * off).toFixed(
-                2
-              )}px 0 0 rgba(110,180,240,${ca}))`
-            );
+            const off = 1 * rySoft, ca = (0.2 * rySoft).toFixed(3);
+            parts.push(`drop-shadow(${(signY * off).toFixed(2)}px 0 0 rgba(255,132,110,${ca}))`);
+            parts.push(`drop-shadow(${(-signY * off).toFixed(2)}px 0 0 rgba(110,180,240,${ca}))`);
           }
 
-          // Tight on-glyph silver glow — hugs letterform, no wide halo.
           if (g >= 0.008) {
-            const a1 = (0.55 * g).toFixed(3);
-            const a2 = (0.35 * g).toFixed(3);
-            const r1 = (1.2 * g).toFixed(2);
-            const r2 = (3 * g).toFixed(2);
+            const a1 = (0.55 * g).toFixed(3), a2 = (0.35 * g).toFixed(3);
+            const r1 = (1.2 * g).toFixed(2), r2 = (3 * g).toFixed(2);
             const br = (1 + 0.12 * g).toFixed(3);
-            parts.push(
-              `drop-shadow(0 0 ${r1}px rgba(225,232,240,${a1}))`
-            );
-            parts.push(
-              `drop-shadow(0 0 ${r2}px rgba(207,216,226,${a2}))`
-            );
+            parts.push(`drop-shadow(0 0 ${r1}px rgba(225,232,240,${a1}))`);
+            parts.push(`drop-shadow(0 0 ${r2}px rgba(207,216,226,${a2}))`);
             parts.push(`brightness(${br})`);
           }
 
           el.style.filter = parts.length ? parts.join(" ") : "";
         }
       }
-
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
@@ -455,8 +345,9 @@ export default function Home() {
   const setCornerRef = (i: number) => (el: HTMLDivElement | null) => {
     cornerRefs.current[i] = el;
   };
+
   return (
-    <PageTransition>
+    <>
       {/* ═══════════════════════════════════════════════════════
           CURTAIN OVERLAY — Solid black, lifts to reveal hero
           ═══════════════════════════════════════════════════════ */}
@@ -475,85 +366,37 @@ export default function Home() {
         ref={heroRef}
         className="relative flex min-h-screen scroll-mt-20 flex-col items-center justify-center overflow-hidden"
       >
-        {/* Parallax wrapper — moves as a unit on scroll */}
         <div data-hero-content className="relative w-full">
-          {/* ── Decorative corner marks ── */}
+          {/* Corner marks */}
           <div className="pointer-events-none absolute inset-6 md:inset-12">
-            {/* Top-left */}
-            <div
-              ref={setCornerRef(0)}
-              className="absolute top-0 left-0 h-6 w-6 border-t border-l border-v-smoke/40 opacity-0"
-            />
-            {/* Top-right */}
-            <div
-              ref={setCornerRef(1)}
-              className="absolute top-0 right-0 h-6 w-6 border-t border-r border-v-smoke/40 opacity-0"
-            />
-            {/* Bottom-left */}
-            <div
-              ref={setCornerRef(2)}
-              className="absolute bottom-0 left-0 h-6 w-6 border-b border-l border-v-smoke/40 opacity-0"
-            />
-            {/* Bottom-right */}
-            <div
-              ref={setCornerRef(3)}
-              className="absolute bottom-0 right-0 h-6 w-6 border-b border-r border-v-smoke/40 opacity-0"
-            />
+            <div ref={setCornerRef(0)} className="absolute top-0 left-0 h-6 w-6 border-t border-l border-v-smoke/40 opacity-0" />
+            <div ref={setCornerRef(1)} className="absolute top-0 right-0 h-6 w-6 border-t border-r border-v-smoke/40 opacity-0" />
+            <div ref={setCornerRef(2)} className="absolute bottom-0 left-0 h-6 w-6 border-b border-l border-v-smoke/40 opacity-0" />
+            <div ref={setCornerRef(3)} className="absolute bottom-0 right-0 h-6 w-6 border-b border-r border-v-smoke/40 opacity-0" />
           </div>
 
-          {/* ── Top rule ── */}
+          {/* Top rule */}
           <div className="flex items-center justify-center px-6 md:px-12">
-            <div
-              ref={(el) => {
-                rulesRef.current.top = el;
-              }}
-              className="h-px w-full max-w-6xl bg-gradient-to-r from-transparent via-v-smoke/40 to-transparent"
-              style={{ transform: "scaleX(0)" }}
-            />
+            <div ref={(el) => { rulesRef.current.top = el; }} className="h-px w-full max-w-6xl bg-gradient-to-r from-transparent via-v-smoke/40 to-transparent" style={{ transform: "scaleX(0)" }} />
           </div>
 
-          {/* ══════════════════════════════════════════
-              MAIN TITLE — Per-character animation
-              Each char in its own overflow-hidden clip
-              ══════════════════════════════════════════ */}
+          {/* Main title */}
           <div className="flex flex-col items-center py-16 md:py-24">
-            <h1
-              className="hero-volari-heading flex select-none items-center justify-center text-[clamp(4rem,17vw,15rem)] leading-none gap-x-[0.05em] sm:gap-x-[0.055em] md:gap-x-[0.06em]"
-              style={{ perspective: "1000px" }}
-            >
+            <h1 className="hero-volari-heading flex select-none items-center justify-center text-[clamp(4rem,17vw,15rem)] leading-none gap-x-[0.05em] sm:gap-x-[0.055em] md:gap-x-[0.06em]" style={{ perspective: "1000px" }}>
               {HERO_WORD.split("").map((char, i) => (
-                <span
-                  key={i}
-                  className="relative inline-block overflow-hidden"
-                  style={{ lineHeight: 1 }}
-                >
-                  <span
-                    ref={setCharRef(i)}
-                    className="hero-volari-letter inline-block font-[family-name:var(--font-playfair)] font-normal tracking-[0.012em] opacity-0"
-                    style={{
-                      willChange: "transform, opacity",
-                      transformStyle: "preserve-3d",
-                      animationDelay: `${i * 0.09}s`,
-                    }}
-                  >
+                <span key={i} className="relative inline-block overflow-hidden" style={{ lineHeight: 1 }}>
+                  <span ref={setCharRef(i)} className="hero-volari-letter inline-block font-[family-name:var(--font-playfair)] font-normal tracking-[0.012em] opacity-0" style={{ willChange: "transform, opacity", transformStyle: "preserve-3d", animationDelay: `${i * 0.09}s` }}>
                     {char}
                   </span>
                 </span>
               ))}
             </h1>
 
-            {/* ── Tagline — word-by-word stagger ── */}
-            <p
-              ref={taglineRef}
-              className="mt-6 flex flex-wrap items-center justify-center gap-x-[0.45em] gap-y-1 overflow-hidden px-4 md:mt-8"
-            >
+            {/* Tagline */}
+            <p ref={taglineRef} className="mt-6 flex flex-wrap items-center justify-center gap-x-[0.45em] gap-y-1 overflow-hidden px-4 md:mt-8">
               {taglineWords.map((word, i) => (
                 <span key={i} className="inline-block overflow-hidden">
-                  <span
-                    ref={setTaglineWordRef(i)}
-                    className="inline-block font-[family-name:var(--font-geist-mono)] text-[10px] uppercase tracking-[0.35em] text-v-silver opacity-0 md:text-xs"
-                    style={{ willChange: "transform, opacity" }}
-                  >
+                  <span ref={setTaglineWordRef(i)} className="inline-block font-[family-name:var(--font-geist-mono)] text-[10px] uppercase tracking-[0.35em] text-v-silver opacity-0 md:text-xs" style={{ willChange: "transform, opacity" }}>
                     {word}
                   </span>
                 </span>
@@ -561,44 +404,37 @@ export default function Home() {
             </p>
           </div>
 
-          {/* ── Studio metadata — horizontal, symmetric (no vertical rotation) ── */}
-          <div
-            id="studio"
-            className="mx-auto mt-10 flex w-full max-w-6xl scroll-mt-20 flex-col items-center justify-between gap-3 px-6 sm:flex-row sm:items-center md:mt-12 md:px-12"
-          >
+          {/* Studio metadata */}
+          <div id="studio" className="mx-auto mt-10 flex w-full max-w-6xl scroll-mt-20 flex-col items-center justify-between gap-3 px-6 sm:flex-row sm:items-center md:mt-12 md:px-12">
             <div ref={metaLeftRef} className="opacity-0">
-              <span className="font-[family-name:var(--font-geist-mono)] text-[9px] uppercase tracking-[0.5em] text-v-smoke">
-                Est. 2024
-              </span>
+              <span className="font-[family-name:var(--font-geist-mono)] text-[9px] uppercase tracking-[0.5em] text-v-smoke">Est. 2024</span>
             </div>
             <div ref={metaRightRef} className="opacity-0">
-              <span className="font-[family-name:var(--font-geist-mono)] text-[9px] uppercase tracking-[0.5em] text-v-smoke">
-                Creative Studio
-              </span>
+              <span className="font-[family-name:var(--font-geist-mono)] text-[9px] uppercase tracking-[0.5em] text-v-smoke">Creative Studio</span>
             </div>
           </div>
 
-          {/* ── Bottom rule ── */}
+          {/* Bottom rule */}
           <div className="flex items-center justify-center px-6 md:px-12">
-            <div
-              ref={(el) => {
-                rulesRef.current.bottom = el;
-              }}
-              className="h-px w-full max-w-6xl bg-gradient-to-r from-transparent via-v-smoke/40 to-transparent"
-              style={{ transform: "scaleX(0)" }}
-            />
+            <div ref={(el) => { rulesRef.current.bottom = el; }} className="h-px w-full max-w-6xl bg-gradient-to-r from-transparent via-v-smoke/40 to-transparent" style={{ transform: "scaleX(0)" }} />
           </div>
         </div>
       </section>
 
       {/* ═══════════════════════════════════════════════════════
-          SERVICES — Horizontal scroll showcase
+          SECTION 1: THE WORK — WebGL Project Gallery
           ═══════════════════════════════════════════════════════ */}
-      <div id="services" className="scroll-mt-20">
-        <ServicesShowcase />
-      </div>
+      <WorkGallery />
 
-      <SiteFooter />
-    </PageTransition>
+      {/* ═══════════════════════════════════════════════════════
+          SECTION 2: THE METHOD — Scroll-Driven Process Pipeline
+          ═══════════════════════════════════════════════════════ */}
+      <ProcessPipeline />
+
+      {/* ═══════════════════════════════════════════════════════
+          SECTION 4: INITIATE — Terminal Contact Interface
+          ═══════════════════════════════════════════════════════ */}
+      <TerminalContact />
+    </>
   );
 }
