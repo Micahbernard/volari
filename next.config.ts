@@ -2,8 +2,9 @@ import path from "node:path";
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Pin Turbopack root to this package. Without it, Next can detect a parent
-  // lockfile and watch too much — stale dev state and workspace-root warnings.
+  output: 'export',
+  distDir: 'dist',
+  images: { unoptimized: true },
   turbopack: {
     root: path.join(__dirname),
   },

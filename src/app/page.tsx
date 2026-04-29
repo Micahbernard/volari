@@ -3,9 +3,7 @@
 import { useEffect, useRef, useMemo } from "react";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
-import TerminalContact from "@/components/TerminalContact";
-import ProcessPipeline from "@/components/ProcessPipeline";
-import WorkGallery from "@/components/WorkGallery";
+import ConvergenceSection from "@/components/ConvergenceSection";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -422,19 +420,10 @@ export default function Home() {
       </section>
 
       {/* ═══════════════════════════════════════════════════════
-          SECTION 1: THE WORK — WebGL Project Gallery
+          SECTION 3: THE CONVERGENCE — WebGL Shadow & Liquid Mercury
           ═══════════════════════════════════════════════════════ */}
-      <WorkGallery />
+      <ConvergenceSection />
 
-      {/* ═══════════════════════════════════════════════════════
-          SECTION 2: THE METHOD — Scroll-Driven Process Pipeline
-          ═══════════════════════════════════════════════════════ */}
-      <ProcessPipeline />
-
-      {/* ═══════════════════════════════════════════════════════
-          SECTION 4: INITIATE — Terminal Contact Interface
-          ═══════════════════════════════════════════════════════ */}
-      <TerminalContact />
     </>
   );
 }
