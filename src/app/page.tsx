@@ -3,7 +3,6 @@
 import { useEffect, useRef, useMemo } from "react";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
-import ConvergenceSection from "@/components/ConvergenceSection";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -418,11 +417,6 @@ export default function Home() {
           </div>
         </div>
       </section>
-
-      {/* ═══════════════════════════════════════════════════════
-          SECTION 3: THE CONVERGENCE — WebGL Shadow & Liquid Mercury
-          ═══════════════════════════════════════════════════════ */}
-      <ConvergenceSection />
 
     </>
   );
