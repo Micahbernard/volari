@@ -19,13 +19,17 @@ gsap.registerPlugin(ScrollTrigger);
 // ─────────────────────────────────────────────────────────────
 // ConvergenceSection ✦ The Convergence
 //
-// A pinned scroll section where organic void darkness consumes
-// from screen edges, and liquid mercury cards stagger into view.
-// Mouse cursor repels shadows. Hovering cards triggers a radiant
-// light burst that banishes the darkness momentarily.
+// ARCHITECTURAL MANDATE — DO NOT BREAK THIS LAYERING:
+//   1. <AbyssalCanvas> is FIRST child: absolute inset-0 z-0,
+//      pointer-events-none. It fills the entire section behind.
+//   2. All DOM content is in a sibling wrapper: relative z-10.
+//      This ensures the WebGL void renders behind, and the DOM
+//      captures all pointer events.
+//   3. Mouse coordinates are tracked globally via window listener
+//      and fed to the shader through refs. No R3F pointer events.
 //
-// Design language: Liquid Mercury — not glass, not flat.
-// Heavy specular, metallic depth, inset shadows, surface distortion.
+// The void creeps from edges. The cursor burns it away. The cards
+// are liquid mercury — their backdrop-filters distort the void.
 // ─────────────────────────────────────────────────────────────
 
 const CARDS = [
@@ -74,7 +78,7 @@ function MercuryCard({
   const Icon = card.icon;
   const cardRef = useRef<HTMLDivElement>(null);
 
-  // Framer Motion motion values for liquid specular tracking
+  // Motion values for liquid specular tracking
   const mouseX = useMotionValue(0);
   const mouseY = useMotionValue(0);
 
@@ -82,18 +86,25 @@ function MercuryCard({
   const smoothX = useSpring(mouseX, springConfig);
   const smoothY = useSpring(mouseY, springConfig);
 
-  // Specular highlight position (inverted for metallic reflection feel)
-  const specX = useTransform(smoothX, [-0.5, 0.5], ["70%", "30%"]);
-  const specY = useTransform(smoothY, [-0.5, 0.5], ["70%", "30%"]);
+  // Specular highlight position
+  const specX = useTransform(smoothX, [-0.5, 0.5], [70, 30]);
+  const specY = useTransform(smoothY, [-0.5, 0.5], [70, 30]);
+  const shine = useTransform(
+    [smoothX, smoothY],
+    ([x, y]) => Math.max(0, 1.0 - Math.sqrt((x as number) ** 2 + (y as number) ** 2) * 1.3)
+  );
 
-  // Subtle 3D tilt
+  // 3D tilt
   const rotateX = useTransform(smoothY, [-0.5, 0.5], [5, -5]);
   const rotateY = useTransform(smoothX, [-0.5, 0.5], [-5, 5]);
 
-  // Surface shine intensity
-  const shine = useTransform(
-    [smoothX, smoothY],
-    ([x, y]) => 1.0 - Math.sqrt((x as number) ** 2 + (y as number) ** 2) * 1.2
+  // Memoized specular gradient string
+  const specularBg = useTransform(
+    [specX, specY, shine],
+    ([x, y, s]) => {
+      const intensity = Math.max(0.04, (s as number) * 0.14);
+      return `radial-gradient(ellipse 170% 150% at ${x as number}% ${y as number}%, rgba(230,210,170,${intensity.toFixed(3)}) 0%, rgba(255,255,255,0.02) 40%, transparent 70%)`;
+    }
   );
 
   const handlePointerMove = useCallback(
@@ -133,28 +144,19 @@ function MercuryCard({
           rotateX,
           rotateY,
           transformStyle: "preserve-3d",
-          // Liquid mercury base: dark metallic with heavy blur distortion behind
           backdropFilter: "blur(16px) saturate(160%) brightness(0.85)",
           WebkitBackdropFilter: "blur(16px) saturate(160%) brightness(0.85)",
           background:
             "linear-gradient(170deg, rgba(22,22,28,0.75) 0%, rgba(10,10,16,0.55) 50%, rgba(6,6,12,0.65) 100%)",
-          // Deep inset shadows for mercury depth
           boxShadow:
             "inset 0 1px 1px rgba(255,255,255,0.06), inset 0 -1px 1px rgba(0,0,0,0.4), 0 12px 40px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.03)",
           border: "1px solid rgba(255,255,255,0.04)",
         }}
       >
-        {/* ── Liquid mercury specular highlight ── */}
+        {/* Liquid mercury specular highlight — tracks mouse */}
         <motion.div
           className="pointer-events-none absolute inset-0 rounded-md opacity-0 transition-opacity duration-700 group-hover:opacity-100"
-          style={{
-            background: useTransform(smoothX, (v) => {
-              const xPos = 50 - v * 30;
-              const yPos = 50 - (smoothY.get() * 30);
-              const shineVal = Math.max(0, 1.0 - Math.sqrt(v * v + smoothY.get() * smoothY.get()));
-              return `radial-gradient(ellipse 170% 150% at ${xPos}% ${yPos}%, rgba(230,210,170,${(shineVal * 0.12).toFixed(3)}) 0%, rgba(255,255,255,0.025) 40%, transparent 70%)`;
-            }),
-          }}
+          style={{ background: specularBg }}
         />
 
         {/* Top rim light — mercury edge glow */}
@@ -165,11 +167,11 @@ function MercuryCard({
           }}
         />
 
-        {/* Corner accent marks — alchemical framing */}
+        {/* Corner accent marks */}
         <div className="pointer-events-none absolute top-2.5 right-2.5 h-5 w-5 border-t border-r border-v-accent/0 transition-colors duration-500 group-hover:border-v-accent/25" />
         <div className="pointer-events-none absolute bottom-2.5 left-2.5 h-5 w-5 border-b border-l border-v-accent/0 transition-colors duration-500 group-hover:border-v-accent/25" />
 
-        {/* ── Icon ── */}
+        {/* Icon */}
         <div className="mb-6 flex h-11 w-11 items-center justify-center rounded-sm border border-v-smoke/15 bg-v-black/50">
           <Icon
             className="h-5 w-5 text-v-accent/60 transition-colors duration-500 group-hover:text-v-accent"
@@ -177,7 +179,7 @@ function MercuryCard({
           />
         </div>
 
-        {/* ── Content ── */}
+        {/* Content */}
         <h3 className="font-[family-name:var(--font-playfair)] text-[1.35rem] tracking-[-0.01em] text-v-chalk sm:text-[1.5rem]">
           {card.title}
         </h3>
@@ -185,7 +187,7 @@ function MercuryCard({
           {card.body}
         </p>
 
-        {/* ── Tags ── */}
+        {/* Tags */}
         <div className="mt-6 flex flex-wrap gap-2">
           {card.tags.map((tag) => (
             <span
@@ -197,7 +199,7 @@ function MercuryCard({
           ))}
         </div>
 
-        {/* ── Index number ── */}
+        {/* Index number */}
         <span className="pointer-events-none absolute bottom-5 right-6 font-[family-name:var(--font-geist-mono)] text-[10px] tracking-[0.15em] text-v-smoke/15">
           {String(index + 1).padStart(2, "0")}
         </span>
@@ -219,17 +221,7 @@ export default function ConvergenceSection() {
   const lightPulseRef = useRef(0);
   const mousePosRef = useRef({ x: 0.5, y: 0.5 });
 
-  // ── Lenis scroll → shader bridge ──
-  useEffect(() => {
-    if (!lenis) return;
-    const onScroll = (e: { velocity: number; progress: number }) => {
-      scrollVelocityRef.current = e.velocity * 0.008;
-    };
-    lenis.on("scroll", onScroll);
-    return () => { lenis.off("scroll", onScroll); };
-  }, [lenis]);
-
-  // ── Global mouse tracker for shader ──
+  // ── Global mouse tracker → feeds shader via ref ──
   useEffect(() => {
     const onMove = (e: MouseEvent) => {
       mousePosRef.current = {
@@ -240,6 +232,16 @@ export default function ConvergenceSection() {
     window.addEventListener("mousemove", onMove, { passive: true });
     return () => window.removeEventListener("mousemove", onMove);
   }, []);
+
+  // ── Lenis scroll → shader bridge ──
+  useEffect(() => {
+    if (!lenis) return;
+    const onScroll = (e: { velocity: number }) => {
+      scrollVelocityRef.current = e.velocity * 0.008;
+    };
+    lenis.on("scroll", onScroll);
+    return () => { lenis.off("scroll", onScroll); };
+  }, [lenis]);
 
   // ── Card hover → light pulse burst ──
   const handleCardHover = useCallback(() => {
@@ -257,7 +259,7 @@ export default function ConvergenceSection() {
       const track = trackRef.current;
       if (!section || !track) return;
 
-      // Pin the section — scroll drives the whole experience
+      // Pin the section
       const pinTrigger = ScrollTrigger.create({
         trigger: section,
         start: "top top",
@@ -271,7 +273,7 @@ export default function ConvergenceSection() {
         },
       });
 
-      // Horizontal card track scrub
+      // Horizontal scrub
       const horizontalScroll = gsap.to(track, {
         x: () => -(track.scrollWidth - window.innerWidth + 120),
         ease: "none",
@@ -284,7 +286,7 @@ export default function ConvergenceSection() {
         },
       });
 
-      // Heading entrance — clip-path wipe with stagger
+      // Heading reveal
       if (headingRef.current) {
         const els = headingRef.current.querySelectorAll("[data-reveal]");
         gsap.fromTo(
@@ -306,7 +308,7 @@ export default function ConvergenceSection() {
         );
       }
 
-      // Card entrance — each card scales and fades as it approaches
+      // Card entrance
       const cards = track.querySelectorAll("[data-card-reveal]");
       cards.forEach((card) => {
         gsap.fromTo(
@@ -328,9 +330,7 @@ export default function ConvergenceSection() {
         );
       });
 
-      return () => {
-        pinTrigger.kill();
-      };
+      return () => { pinTrigger.kill(); };
     },
     { scope: sectionRef }
   );
@@ -342,7 +342,11 @@ export default function ConvergenceSection() {
       className="relative min-h-screen overflow-hidden"
       style={{ background: "var(--v-void)" }}
     >
-      {/* ── WebGL Void Canvas ── */}
+      {/* ═══════════════════════════════════════════════════════
+          LAYER 0: THE VOID — WebGL Canvas
+          absolute, inset-0, z-index: 0, pointer-events: none
+          The shader renders here. It cannot intercept clicks.
+          ═══════════════════════════════════════════════════════ */}
       <AbyssalCanvas
         scrollProgressRef={scrollProgressRef}
         scrollVelocityRef={scrollVelocityRef}
@@ -350,67 +354,74 @@ export default function ConvergenceSection() {
         mousePosRef={mousePosRef}
       />
 
-      {/* ── Top rule ── */}
-      <div className="relative z-10 flex justify-center px-6 pt-16 md:px-10 md:pt-20">
-        <div className="h-px w-full max-w-6xl bg-gradient-to-r from-transparent via-v-smoke/25 to-transparent" />
-      </div>
+      {/* ═══════════════════════════════════════════════════════
+          LAYER 1: THE DOM — All content
+          relative, z-index: 10
+          This sits ON TOP of the void. All interaction happens here.
+          The cards' backdrop-filters distort the void behind them.
+          ═══════════════════════════════════════════════════════ */}
+      <div className="relative" style={{ zIndex: 10 }}>
+        {/* Top rule */}
+        <div className="flex justify-center px-6 pt-16 md:px-10 md:pt-20">
+          <div className="h-px w-full max-w-6xl bg-gradient-to-r from-transparent via-v-smoke/25 to-transparent" />
+        </div>
 
-      {/* ── Heading ── */}
-      <div ref={headingRef} className="relative z-10 px-6 pb-16 pt-20 md:px-10 md:pb-20 md:pt-28">
-        <div className="mx-auto max-w-[90rem]">
-          <span
-            data-reveal
-            className="mb-4 block font-[family-name:var(--font-geist-mono)] text-[10px] uppercase tracking-[0.5em] text-v-accent/60"
-            style={{ opacity: 0 }}
-          >
-            004 — The Convergence
-          </span>
-          <div className="flex items-center gap-5 md:gap-8">
-            <div
+        {/* Heading */}
+        <div ref={headingRef} className="px-6 pb-16 pt-20 md:px-10 md:pb-20 md:pt-28">
+          <div className="mx-auto max-w-[90rem]">
+            <span
               data-reveal
-              className="hidden h-px w-12 bg-gradient-to-r from-v-accent/30 to-transparent md:block"
-              style={{ opacity: 0 }}
-            />
-            <h2
-              data-reveal
-              className="font-[family-name:var(--font-playfair)] text-[clamp(2.2rem,5.5vw,5rem)] leading-[1.05] tracking-[-0.02em] text-v-chalk"
+              className="mb-4 block font-[family-name:var(--font-geist-mono)] text-[10px] uppercase tracking-[0.5em] text-v-accent/60"
               style={{ opacity: 0 }}
             >
-              Where light{" "}
-              <span className="italic text-v-accent">prevails</span>
-            </h2>
+              004 — The Convergence
+            </span>
+            <div className="flex items-center gap-5 md:gap-8">
+              <div
+                data-reveal
+                className="hidden h-px w-12 bg-gradient-to-r from-v-accent/30 to-transparent md:block"
+                style={{ opacity: 0 }}
+              />
+              <h2
+                data-reveal
+                className="font-[family-name:var(--font-playfair)] text-[clamp(2.2rem,5.5vw,5rem)] leading-[1.05] tracking-[-0.02em] text-v-chalk"
+                style={{ opacity: 0 }}
+              >
+                Where light{" "}
+                <span className="italic text-v-accent">prevails</span>
+              </h2>
+            </div>
+            <p
+              data-reveal
+              className="mt-4 max-w-md font-[family-name:var(--font-geist-mono)] text-[11px] leading-[1.9] tracking-[0.02em] text-v-silver/60 md:text-xs"
+              style={{ opacity: 0 }}
+            >
+              Scroll into the convergence. Four pillars define the Volari
+              ethos — hover each to push back the darkness.
+            </p>
           </div>
-          <p
-            data-reveal
-            className="mt-4 max-w-md font-[family-name:var(--font-geist-mono)] text-[11px] leading-[1.9] tracking-[0.02em] text-v-silver/60 md:text-xs"
-            style={{ opacity: 0 }}
-          >
-            Scroll into the convergence. Four pillars define the Volari
-            ethos — hover each to push back the darkness.
-          </p>
         </div>
-      </div>
 
-      {/* ── Horizontal card track ── */}
-      <div
-        ref={trackRef}
-        className="relative z-10 flex items-stretch gap-5 px-6 pb-32 will-change-transform md:gap-7 md:px-10"
-      >
-        {CARDS.map((card, i) => (
-          <MercuryCard
-            key={card.id}
-            card={card}
-            index={i}
-            onHover={handleCardHover}
-            onLeave={handleCardLeave}
-          />
-        ))}
-        {/* End spacer for scroll breathing room */}
-        <div className="w-[20vw] shrink-0" aria-hidden="true" />
-      </div>
+        {/* Horizontal card track */}
+        <div
+          ref={trackRef}
+          className="flex items-stretch gap-5 px-6 pb-32 will-change-transform md:gap-7 md:px-10"
+        >
+          {CARDS.map((card, i) => (
+            <MercuryCard
+              key={card.id}
+              card={card}
+              index={i}
+              onHover={handleCardHover}
+              onLeave={handleCardLeave}
+            />
+          ))}
+          <div className="w-[20vw] shrink-0" aria-hidden="true" />
+        </div>
 
-      {/* ── Bottom edge glow ── */}
-      <div className="pointer-events-none absolute bottom-0 left-0 right-0 z-10 h-24 bg-gradient-to-t from-v-void to-transparent" />
+        {/* Bottom edge fade */}
+        <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-v-void to-transparent" />
+      </div>
     </section>
   );
 }
