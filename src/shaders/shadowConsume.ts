@@ -1,221 +1,218 @@
 // ─────────────────────────────────────────────────────────────
-// Shadow-consume shader — day → void flip
+// shadowConsume.ts ✦ The Convergence Shader
 //
-// A fullscreen fragment shader that simulates a living, breathing
-// darkness devouring the page from the crest origin outward.
+// A fullscreen fragment shader simulating the Hollow Knight Void:
+// creeping, organic darkness that consumes from screen edges inward.
+// The cursor casts a pool of light that violently repels tendrils.
+// Scroll velocity agitates the noise — fast scroll = volatile shadows.
 //
-// Composition, front to back:
-//   1. A turbulent smoke body built from domain-warped fBm — three
-//      nested noise passes so the "liquid" reads as thick ink that
-//      rolls in on itself, not as a static pattern.
-//   2. A tendril field sampled in polar coordinates around the
-//      origin — produces long, twisting filaments that radiate
-//      outward like fingers of shadow.
-//   3. A radial consume front that expands with uProgress — smoke
-//      and tendrils are masked to the interior of this front, which
-//      carries a breathing feather for soft, organic dissolve edges.
-//   4. A peak blackout that crossfades to solid black at the end of
-//      the timeline — this is where the theme actually swaps, so
-//      the mutation is never visible through partial transparency.
-//
-// Colour is deep matte black with a barely-perceptible cool-violet
-// core (Destiny "Darkness" reference). No warm tones.
+// Architecture:
+//   1. 3D simplex noise (Ashima Arts) — organic, non-tiling
+//   2. Rotated-octave fBm for axis-aligned artefact breaking
+//   3. Double domain warp for ink-like fluid self-folding
+//   4. Edge-driven SDF consume mask with heavy noise perturbation
+//   5. Tendrils in polar space reaching past the main front
+//   6. Mouse repulsor with sharp exponential falloff
+//   7. Scroll velocity modulates noise amplitude and speed
+//   8. Violet-tinged near-black palette
 // ─────────────────────────────────────────────────────────────
 
-/**
- * Vertex: pass-through for a fullscreen clip-space quad.
- * Expects a PlaneGeometry of size 2 (positions −1..1) so a single
- * mesh covers NDC regardless of camera. No matrix transforms applied.
- */
 export const vertexShader = /* glsl */ `
   void main() {
     gl_Position = vec4(position.xy, 0.0, 1.0);
   }
 `;
 
-/**
- * Fragment: the shadow-consume effect.
- *
- * Uniforms:
- *   uResolution — canvas size in pixels.
- *   uOrigin     — crest centre in pixel coords (top-left origin
- *                 from the browser; we invert Y internally).
- *   uTime       — seconds since Canvas mount; used for animated
- *                 noise offsets / breathing feather.
- *   uProgress   — 0..1 radial consume progression.
- *   uPeak       — 0..1 final blackout ramp (0 = shadow pattern,
- *                 1 = solid black).
- *   uActive     — master visibility 0..1 so the overlay fades in
- *                 and out cleanly at the edges of its lifecycle.
- *   uAspectBias — >0 stretches the smoke sample space vertically so
- *                 the consume feels like it has mass pulling down
- *                 from the horizon instead of reading as a circle.
- */
 export const fragmentShader = /* glsl */ `
   precision highp float;
 
   uniform vec2  uResolution;
-  uniform vec2  uOrigin;
   uniform float uTime;
-  uniform float uProgress;
-  uniform float uPeak;
-  uniform float uActive;
-  uniform float uAspectBias;
+  uniform vec2  uMouse;           // 0..1 UV space, Y flipped
+  uniform float uScrollProgress;  // 0..1 darkness encroachment
+  uniform float uScrollVelocity;  // Lenis velocity
+  uniform float uLightPulse;      // Card hover burst 0..1
+  uniform float uActive;          // Master visibility
 
-  // ───── Hash & value noise ─────
-  // Single-float hash (Dave Hoskins-style) — cheap, decorrelated
-  // enough for visual noise without needing sine-based collapses.
-  float hash12(vec2 p) {
-    vec3 p3 = fract(vec3(p.xyx) * 0.1031);
-    p3 += dot(p3, p3.yzx + 33.33);
-    return fract((p3.x + p3.y) * p3.z);
+  // ───── 3D Simplex Noise (Ashima Arts / Ian McEwan) ─────
+  vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+  vec4 mod289(vec4 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+  vec4 permute(vec4 x) { return mod289(((x * 34.0) + 10.0) * x); }
+  vec4 taylorInvSqrt(vec4 r) { return 1.79284291400159 - 0.85373472095314 * r; }
+
+  float snoise(vec3 v) {
+    const vec2 C = vec2(1.0 / 6.0, 1.0 / 3.0);
+    const vec4 D = vec4(0.0, 0.5, 1.0, 2.0);
+    vec3 i = floor(v + dot(v, C.yyy));
+    vec3 x0 = v - i + dot(i, C.xxx);
+    vec3 g = step(x0.yzx, x0.xyz);
+    vec3 l = 1.0 - g;
+    vec3 i1 = min(g.xyz, l.zxy);
+    vec3 i2 = max(g.xyz, l.zxy);
+    vec3 x1 = x0 - i1 + C.xxx;
+    vec3 x2 = x0 - i2 + C.yyy;
+    vec3 x3 = x0 - D.yyy;
+    i = mod289(i);
+    vec4 p = permute(permute(permute(
+      i.z + vec4(0.0, i1.z, i2.z, 1.0))
+      + i.y + vec4(0.0, i1.y, i2.y, 1.0))
+      + i.x + vec4(0.0, i1.x, i2.x, 1.0));
+    float n_ = 0.142857142857;
+    vec3 ns = n_ * D.wyz - D.xzx;
+    vec4 j = p - 49.0 * floor(p * ns.z * ns.z);
+    vec4 x_ = floor(j * ns.z);
+    vec4 y_ = floor(j - 7.0 * x_);
+    vec4 x = x_ * ns.x + ns.yyyy;
+    vec4 y = y_ * ns.x + ns.yyyy;
+    vec4 h = 1.0 - abs(x) - abs(y);
+    vec4 b0 = vec4(x.xy, y.xy);
+    vec4 b1 = vec4(x.zw, y.zw);
+    vec4 s0 = floor(b0) * 2.0 + 1.0;
+    vec4 s1 = floor(b1) * 2.0 + 1.0;
+    vec4 sh = -step(h, vec4(0.0));
+    vec4 a0 = b0.xzyw + s0.xzyw * sh.xxyy;
+    vec4 a1 = b1.xzyw + s1.xzyw * sh.zzww;
+    vec3 p0 = vec3(a0.xy, h.x);
+    vec3 p1 = vec3(a0.zw, h.y);
+    vec3 p2 = vec3(a1.xy, h.z);
+    vec3 p3 = vec3(a1.zw, h.w);
+    vec4 norm = taylorInvSqrt(vec4(dot(p0,p0), dot(p1,p1), dot(p2,p2), dot(p3,p3)));
+    p0 *= norm.x; p1 *= norm.y; p2 *= norm.z; p3 *= norm.w;
+    vec4 m = max(0.6 - vec4(dot(x0,x0), dot(x1,x1), dot(x2,x2), dot(x3,x3)), 0.0);
+    m = m * m;
+    return 42.0 * dot(m * m, vec4(dot(p0,x0), dot(p1,x1), dot(p2,x2), dot(p3,x3)));
   }
 
-  float vnoise(vec2 p) {
-    vec2 i = floor(p);
-    vec2 f = fract(p);
-    // Hermite smoothing — cheaper than quintic and visually adequate
-    // for stacked fBm where high-frequency artefacts wash out.
-    vec2 u = f * f * (3.0 - 2.0 * f);
-    float a = hash12(i);
-    float b = hash12(i + vec2(1.0, 0.0));
-    float c = hash12(i + vec2(0.0, 1.0));
-    float d = hash12(i + vec2(1.0, 1.0));
-    return mix(mix(a, b, u.x), mix(c, d, u.x), u.y);
-  }
-
-  // Rotated-octave fBm. The rotation matrix breaks axis-aligned
-  // artefacts that stacked noise otherwise produces.
-  float fbm(vec2 p) {
+  // ───── Fractional Brownian Motion ─────
+  float fbm(vec2 p, float t) {
     float v = 0.0;
     float a = 0.5;
     mat2 rot = mat2(0.80, 0.60, -0.60, 0.80);
-    for (int i = 0; i < 6; i++) {
-      v += a * vnoise(p);
+    for (int i = 0; i < 5; i++) {
+      v += a * snoise(vec3(p, t));
       p = rot * p * 2.02;
       a *= 0.5;
     }
     return v;
   }
 
-  // ───── Turbulent ink ─────
-  // Two-level domain warp: offset position by fbm, then offset by
-  // fbm of that warped position. The iterated warp is what gives
-  // Destiny-style darkness its convecting, self-folding look —
-  // flat noise reads as static, double-warp reads as fluid.
+  // ───── Turbulent Ink (double domain warp) ─────
   float turbulentInk(vec2 p, float t) {
     vec2 q = vec2(
-      fbm(p + 0.08 * t),
-      fbm(p + vec2(3.1, 1.7) + 0.07 * t)
+      fbm(p + vec2(0.0, 0.08 * t), t * 0.15),
+      fbm(p + vec2(3.1, 1.7) + vec2(0.0, 0.07 * t), t * 0.13)
     );
     vec2 r = vec2(
-      fbm(p + 3.2 * q + vec2(1.7, 9.2) - 0.11 * t),
-      fbm(p + 3.2 * q + vec2(8.3, 2.8) + 0.09 * t)
+      fbm(p + 3.2 * q + vec2(1.7, 9.2) - vec2(0.0, 0.11 * t), t * 0.12),
+      fbm(p + 3.2 * q + vec2(8.3, 2.8) + vec2(0.0, 0.09 * t), t * 0.14)
     );
-    return fbm(p + 4.0 * r);
+    return fbm(p + 4.0 * r, t * 0.1);
   }
 
-  // ───── Tendrils ─────
-  // Sample noise in (angle, radius) polar space so patterns elongate
-  // radially. Sharpen with smoothstep to turn blurry clouds into
-  // thin filaments. Time shears the radial coordinate so tendrils
-  // crawl outward (not just shimmer in place).
-  float tendrils(vec2 p, float t, vec2 origin) {
-    vec2 d = p - origin;
+  // ───── Tendrils (polar-space) ─────
+  float tendrils(vec2 p, float t, vec2 center) {
+    vec2 d = p - center;
     float ang = atan(d.y, d.x);
     float rad = length(d);
     vec2 polar = vec2(ang * 2.2, rad * 4.5 - t * 1.05);
     float n = turbulentInk(polar, t * 0.55);
-    // Sharpen — the difference between 0.44 and 0.78 gives thin
-    // crest-to-trough streaks instead of soft fog. Slight contrast
-    // boost via pow so the streaks feel inky rather than gauzy.
     float s = smoothstep(0.44, 0.78, n);
     return pow(s, 1.4);
   }
 
+  // ───── Edge encroachment mask (rounded rect SDF) ─────
+  float edgeConsume(vec2 uv, float progress, float t) {
+    float margin = (1.0 - progress) * 0.5;
+    // Heavy noise perturbation for organic, irregular edge
+    float edgeNoise = snoise(vec3(uv * 3.0, t * 0.3)) * 0.12;
+    edgeNoise += snoise(vec3(uv * 7.0, t * 0.5)) * 0.06;
+    margin += edgeNoise * progress;
+    // Rounded rect SDF
+    vec2 d = abs(uv - 0.5) - (0.5 - margin - 0.25 * progress);
+    float dist = length(max(d, 0.0)) + min(max(d.x, d.y), 0.0);
+    float feather = 0.18 + 0.06 * sin(t * 2.1 + uv.x * 3.0);
+    return 1.0 - smoothstep(-feather, feather, dist);
+  }
+
+  // ───── Mouse repulsor (violent light push-back) ─────
+  float mouseRepulsor(vec2 uv, vec2 mouse, float progress) {
+    // Flip Y for shader space
+    vec2 m = vec2(mouse.x, 1.0 - mouse.y);
+    float d = length(uv - m);
+    float baseRadius = 0.20 + progress * 0.15;
+    // Sharp exponential falloff for violent push-back
+    float intensity = exp(-d * d / (baseRadius * baseRadius * 0.5));
+    // Secondary tighter core
+    float core = exp(-d * d / (baseRadius * baseRadius * 0.12));
+    intensity += core * 0.4;
+    return intensity;
+  }
+
   void main() {
-    // Screen UV in 0..1, with Y flipped so uOrigin (browser pixels,
-    // top-left origin) maps correctly — gl_FragCoord's Y is
-    // bottom-up by default.
     vec2 uv = gl_FragCoord.xy / uResolution.xy;
-    uv.y = 1.0 - uv.y;
+    uv.y = 1.0 - uv.y; // Flip Y for top-left origin
 
     float aspect = uResolution.x / uResolution.y;
-    vec2 origin = uOrigin / uResolution.xy;
+    float t = uTime;
 
-    // Aspect-correct so radial math reads as circles on any shape
-    // of viewport. Multiply by (aspect, 1 + bias) so vertical range
-    // is slightly stretched — makes the shadow feel taller than
-    // wide, closer to "a curtain falling" than "a bubble growing".
-    vec2 p = vec2(uv.x * aspect, uv.y * (1.0 + uAspectBias));
-    vec2 o = vec2(origin.x * aspect, origin.y * (1.0 + uAspectBias));
+    // Scroll agitation: velocity boosts both speed and amplitude
+    float velMag = abs(uScrollVelocity);
+    float velAggro = 1.0 + velMag * 4.0;
+    float velAmp = 1.0 + velMag * 2.5;
+    float agitatedT = t * velAggro;
 
-    vec2 d = p - o;
-    float dist = length(d);
+    vec2 p = vec2(uv.x * aspect, uv.y);
+    vec2 center = vec2(0.5 * aspect, 0.5);
 
-    // ── Main ink body ──
-    // Sample position is pulled toward the origin by a distance-
-    // modulated offset, so the pattern appears to be getting sucked
-    // inward. The scalar 2.2 controls ink frequency — higher =
-    // finer detail, lower = broader cloud shapes.
-    vec2 inkP = p * 2.4 + 0.55 * d / max(dist, 0.06);
-    float ink = turbulentInk(inkP, uTime);
+    // ── Ink body ──
+    vec2 inkP = p * 2.8 * velAmp + 0.55 * (p - center) / max(length(p - center), 0.06);
+    float ink = turbulentInk(inkP, agitatedT);
     ink = smoothstep(0.28, 0.88, ink);
 
     // ── Tendrils ──
-    float tend = tendrils(p * 1.15, uTime, o);
+    float tend = tendrils(p * 1.15, agitatedT, center);
 
-    // ── Radial consume front ──
-    // Scale the front to cover the full diagonal at progress = 1.
-    // maxDim is the aspect-corrected diagonal length (so the front
-    // reaches every corner for any viewport shape).
-    float maxDim = sqrt(aspect * aspect + pow(1.0 + uAspectBias, 2.0));
-    float frontRadius = uProgress * maxDim * 1.15;
-    // Breathing feather — subtle sine modulation (~14% amplitude)
-    // so the dissolve edge never reads as a crisp ring.
-    float feather = 0.22 + 0.08 * sin(uTime * 2.6 + dist * 3.0);
+    // ── Edge consume front ──
+    float consume = edgeConsume(uv, uScrollProgress, agitatedT);
+    float tendrilReach = smoothstep(0.0, 0.40, consume);
 
-    // smoothstep(high, low, ...) gives 1 inside the front and 0
-    // outside, with the feather as the dissolve band.
-    float frontMask = smoothstep(frontRadius + feather, frontRadius - feather, dist);
-
-    // Tendrils reach slightly past the main front — that's the
-    // "alive" signal: the silhouette isn't a clean disc, it has
-    // filaments probing outward hunting for the light.
-    float tendrilReach = smoothstep(frontRadius + 0.55, frontRadius - 0.05, dist);
-
-    // ── Composite ──
-    // Mix ink with 1.0 so the inside of the front is solid-ish, not
-    // patchy. Pull it toward solid as the effect progresses.
-    float interior = mix(0.58, 0.92, uProgress);
-    float shadow = frontMask * mix(ink, 1.0, interior);
-
-    // Tendrils lay on top with high opacity — they should read as
-    // black, not gauze.
+    // ── Composite shadow density ──
+    float interior = mix(0.55, 0.94, uScrollProgress);
+    float shadow = consume * mix(ink, 1.0, interior);
     shadow = max(shadow, tend * tendrilReach * 0.95);
+    shadow = pow(shadow, mix(1.6, 0.65, uScrollProgress));
 
-    // Contrast shaping — early frames are gauzier, late frames are
-    // opaque. pow exponent lerps from 1.5 (toothy) to 0.7 (solid).
-    shadow = pow(shadow, mix(1.5, 0.7, uProgress));
+    // ── Mouse repulsor ──
+    float light = mouseRepulsor(uv, uMouse, uScrollProgress);
+    shadow = max(0.0, shadow - light * 0.95);
 
-    // ── Peak blackout ──
-    // uPeak crossfades the entire shadow toward solid black, which
-    // is the moment the theme swaps underneath. By the time uPeak
-    // reaches 1, the fragment is pitch — the swap is invisible.
-    shadow = mix(shadow, 1.0, uPeak);
+    // ── Light pulse burst (card hover) ──
+    if (uLightPulse > 0.01) {
+      float pulseDist = length(uv - vec2(uMouse.x, 1.0 - uMouse.y));
+      float pulseRadius = 0.35 * uLightPulse;
+      float pulseRing = smoothstep(pulseRadius * 1.3, pulseRadius * 0.5, pulseDist);
+      pulseRing *= smoothstep(0.0, pulseRadius * 0.3, pulseDist);
+      shadow = max(0.0, shadow - pulseRing * uLightPulse * 1.2);
+    }
 
-    // Master visibility for clean mount/unmount edges.
+    // ── Velocity edge shimmer ──
+    float shimmer = velMag * 0.2 * snoise(vec3(p * 10.0, t * 3.0));
+    shadow += shimmer * consume;
+
+    // Master visibility
     shadow *= uActive;
+    shadow = clamp(shadow, 0.0, 1.0);
 
     // ── Colour ──
-    // Deep matte black at the edges; a cool violet-tinged near-black
-    // at the core. The shift is 1–2 bits off pure black — the viewer
-    // registers "dark", not "tinted". Destiny's Darkness leans cool
-    // rather than warm, so we bias blue over red.
-    vec3 edgeBlack = vec3(0.008, 0.006, 0.012);
-    vec3 coreBlack = vec3(0.024, 0.018, 0.036);
-    float coreBlend = smoothstep(0.9, 0.0, dist / maxDim) * (1.0 - uPeak);
+    vec3 edgeBlack = vec3(0.009, 0.007, 0.013);
+    vec3 coreBlack = vec3(0.032, 0.022, 0.048);
+    float coreBlend = smoothstep(0.9, 0.0, length(uv - 0.5)) * (1.0 - uScrollProgress);
     vec3 tint = mix(edgeBlack, coreBlack, coreBlend);
+
+    // Subtle gold warmth where light touches
+    vec3 lightTint = vec3(0.88, 0.74, 0.54);
+    float lightMask = smoothstep(0.0, 0.25, light);
+    tint = mix(tint, lightTint, lightMask * 0.06 * uActive);
 
     gl_FragColor = vec4(tint, shadow);
   }
